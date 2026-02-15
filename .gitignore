@@ -1,1 +1,4 @@
 /.vscode
+/release-build.bat
+/publish
+/installer/output
