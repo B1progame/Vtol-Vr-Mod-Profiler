@@ -161,10 +161,38 @@
     </Style>
 
     <Style Selector="ScrollBar">
-      <Setter Property="Width" Value="8" />
-      <Setter Property="Height" Value="8" />
-      <Setter Property="Background" Value="#22000000" />
-      <Setter Property="Opacity" Value="0.85" />
+      <Setter Property="Background" Value="#2A040B17" />
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="AllowAutoHide" Value="False" />
+    </Style>
+
+    <Style Selector="ScrollBar:vertical">
+      <Setter Property="Width" Value="12" />
+    </Style>
+
+    <Style Selector="ScrollBar:horizontal">
+      <Setter Property="Height" Value="12" />
+    </Style>
+
+    <Style Selector="ScrollViewer /template/ ScrollBar#PART_VerticalScrollBar">
+      <Setter Property="Width" Value="12" />
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="AllowAutoHide" Value="False" />
+      <Setter Property="Background" Value="#3A061225" />
+    </Style>
+
+    <Style Selector="ScrollBar /template/ Thumb">
+      <Setter Property="Background" Value="#CCFF2A2A" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+
+    <Style Selector="ScrollBar /template/ Thumb:pointerover">
+      <Setter Property="Background" Value="#EEFF4A4A" />
+    </Style>
+
+    <Style Selector="ScrollBar /template/ Thumb:pressed">
+      <Setter Property="Background" Value="#FFFF6A6A" />
     </Style>
 
     <Style Selector="Rectangle.red-slit">
@@ -313,7 +341,13 @@
             </Grid>
 
             <Grid Grid.Row="4" RowDefinitions="*,Auto">
-              <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" Background="#66030A14" BorderBrush="#44FF1A1A">
+              <ListBox ItemsSource="{Binding Profiles}"
+                       SelectedItem="{Binding SelectedProfile}"
+                       Background="#66030A14"
+                       BorderBrush="#44FF1A1A"
+                       ScrollViewer.VerticalScrollBarVisibility="Visible"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                       ScrollViewer.AllowAutoHide="False">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:ProfileItemViewModel">
                     <Border Classes="card-panel" Padding="8" Margin="0,0,0,8">
@@ -345,7 +379,10 @@
               </StackPanel>
             </Grid>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Visible"
+                          HorizontalScrollBarVisibility="Disabled"
+                          AllowAutoHide="False">
               <ItemsControl ItemsSource="{Binding FilteredMods}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
@@ -391,7 +428,9 @@
             Classes="chrome-panel settings-panel"
             Padding="12"
             ZIndex="100">
-      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ScrollViewer VerticalScrollBarVisibility="Visible"
+                    HorizontalScrollBarVisibility="Disabled"
+                    AllowAutoHide="False">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
           <TextBlock Text="SETTINGS" FontSize="17" FontWeight="Bold" LetterSpacing="1.4" />
 

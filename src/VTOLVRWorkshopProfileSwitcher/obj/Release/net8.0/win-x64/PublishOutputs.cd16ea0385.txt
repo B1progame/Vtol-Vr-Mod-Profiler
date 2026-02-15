@@ -1,0 +1,5 @@
+C:\Users\bslid.BENJI-PC\OneDrive\Dokumente\Vtol-vr-mod-profile\Vtol-Vr-Mod-Profiler\publish\win-x64-20260215-160652\VTOLVRWorkshopProfileSwitcher.pdb
+C:\Users\bslid.BENJI-PC\OneDrive\Dokumente\Vtol-vr-mod-profile\Vtol-Vr-Mod-Profiler\publish\win-x64-20260215-160652\av_libglesv2.dll
+C:\Users\bslid.BENJI-PC\OneDrive\Dokumente\Vtol-vr-mod-profile\Vtol-Vr-Mod-Profiler\publish\win-x64-20260215-160652\libHarfBuzzSharp.dll
+C:\Users\bslid.BENJI-PC\OneDrive\Dokumente\Vtol-vr-mod-profile\Vtol-Vr-Mod-Profiler\publish\win-x64-20260215-160652\libSkiaSharp.dll
+C:\Users\bslid.BENJI-PC\OneDrive\Dokumente\Vtol-vr-mod-profile\Vtol-Vr-Mod-Profiler\publish\win-x64-20260215-160652\VTOLVRWorkshopProfileSwitcher.exe
