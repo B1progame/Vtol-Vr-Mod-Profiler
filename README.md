@@ -131,13 +131,6 @@ We want your feedback and ideas:
 
 Please open a GitHub issue for feature suggestions, workflow ideas, UX suggestions, and concept/mockup proposals.
 
-## Roadmap (Optional)
-
-- CLI support for scripted profile switching
-- Profile or mod package sharing/import/export
-- Drag-and-drop workflow improvements
-- Quest-related compatibility ideas
-- Multi-platform support improvements
 
 ## Contributing
 
