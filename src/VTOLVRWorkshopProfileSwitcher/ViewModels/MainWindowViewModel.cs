@@ -26,6 +26,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private const string GitHubOwner = "B1progame";
     private const string GitHubRepoName = "Vtol-Vr-Mod-Profiler";
     private const string ReleasesPageUrl = "https://github.com/B1progame/Vtol-Vr-Mod-Profiler/releases";
+    private const string DefaultInstallerAssetName = "VTOLVRWorkshopProfileSwitcher-Setup.exe";
     private static readonly Version CurrentAppVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
     private static readonly string CurrentVersionId = GetCurrentVersionId();
     private static readonly HttpClient GitHubHttpClient = new();
@@ -116,7 +117,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private string latestInstallerFileName = string.Empty;
 
     public IReadOnlyList<string> DesignOptions { get; } = new[] { "TACTICAL RED", "STEEL BLUE" };
-    public string AppAuthor => "VTOLVR Workshop Tools";
+    public string AppAuthor => "B1progame";
     public string AppCreatedOn => "2026-02-15";
     public string CurrentVersionText => $"v{CurrentAppVersion.Major}.{CurrentAppVersion.Minor}.{CurrentAppVersion.Build}";
     public string CurrentVersionIdText => CurrentVersionId;
@@ -205,10 +206,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             var latestTag = latest.Value.TagName;
             LatestReleaseVersion = string.IsNullOrWhiteSpace(latestTag) ? "Unknown" : latestTag;
             LatestReleaseUrl = string.IsNullOrWhiteSpace(latest.Value.HtmlUrl) ? ReleasesPageUrl : latest.Value.HtmlUrl;
-            LatestInstallerUrl = latest.Value.InstallerUrl;
-            LatestInstallerFileName = latest.Value.InstallerName;
+            LatestInstallerUrl = string.IsNullOrWhiteSpace(latest.Value.InstallerUrl)
+                ? $"https://github.com/{GitHubOwner}/{GitHubRepoName}/releases/latest/download/{DefaultInstallerAssetName}"
+                : latest.Value.InstallerUrl;
+            LatestInstallerFileName = string.IsNullOrWhiteSpace(latest.Value.InstallerName)
+                ? DefaultInstallerAssetName
+                : latest.Value.InstallerName;
             HasUpdateAvailable = IsUpdateAvailable(latestTag, CurrentAppVersion, CurrentVersionId);
-            CanAutoInstallUpdate = HasUpdateAvailable && !string.IsNullOrWhiteSpace(LatestInstallerUrl);
+            CanAutoInstallUpdate = HasUpdateAvailable;
 
             if (!HasUpdateAvailable)
             {
@@ -813,14 +818,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         var latest = ParseVersion(latestTag);
-        if (latest is not null)
+        if (latest is null)
         {
-            return latest > currentVersion;
+            // Ignore non-version tags like "Installer" to avoid false update prompts.
+            return false;
         }
 
-        var normalizedCurrent = NormalizeTag($"v{currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}");
-        return !string.IsNullOrWhiteSpace(normalizedTag) &&
-               !string.Equals(normalizedTag, normalizedCurrent, StringComparison.OrdinalIgnoreCase);
+        return latest > currentVersion;
     }
 
     private static Version? ParseVersion(string? tag)
