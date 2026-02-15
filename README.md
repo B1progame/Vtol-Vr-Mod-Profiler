@@ -2,7 +2,7 @@
 
 VTOL VR Workshop Profile Switcher is a desktop utility for managing VTOL VR Steam Workshop mods with reusable profiles.
 
-![VTOL VR Workshop Profile Switcher](src/VTOLVRWorkshopProfileSwitcher/Assets/TacticalLogo.svg)
+<img src="src/VTOLVRWorkshopProfileSwitcher/Assets/TacticalLogo.svg" alt="VTOL VR Workshop Profile Switcher" width="220" />
 
 It helps you switch between mod setups by treating workshop folders as either enabled or disabled, then applying a saved profile in one action.
 
