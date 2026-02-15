@@ -28,28 +28,6 @@
       <Setter Property="Foreground" Value="#E7EDF9" />
     </Style>
 
-    <Style Selector="Window.design-blue Border.chrome-panel">
-      <Setter Property="BorderBrush" Value="#663A9EFF" />
-    </Style>
-    <Style Selector="Window.design-blue Border.card-panel">
-      <Setter Property="BorderBrush" Value="#4D3A9EFF" />
-    </Style>
-    <Style Selector="Window.design-blue Button">
-      <Setter Property="BorderBrush" Value="#553A9EFF" />
-    </Style>
-    <Style Selector="Window.design-blue Button:pointerover">
-      <Setter Property="BorderBrush" Value="#C95DB1FF" />
-    </Style>
-    <Style Selector="Window.design-blue TextBox">
-      <Setter Property="BorderBrush" Value="#445DA8FF" />
-    </Style>
-    <Style Selector="Window.design-blue Rectangle.red-slit">
-      <Setter Property="Fill" Value="#5562B6FF" />
-    </Style>
-    <Style Selector="Window.design-blue Ellipse.spark">
-      <Setter Property="Fill" Value="#AA76BEFF" />
-    </Style>
-
     <Style Selector="Border.chrome-panel">
       <Setter Property="Background" Value="#B20A0F1C" />
       <Setter Property="BorderBrush" Value="#66FF1A1A" />
@@ -145,6 +123,28 @@
           <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.07" /></KeyFrame>
         </Animation>
       </Style.Animations>
+    </Style>
+
+    <Style Selector="Window.design-blue Border.chrome-panel">
+      <Setter Property="BorderBrush" Value="#663A9EFF" />
+    </Style>
+    <Style Selector="Window.design-blue Border.card-panel">
+      <Setter Property="BorderBrush" Value="#4D3A9EFF" />
+    </Style>
+    <Style Selector="Window.design-blue Button">
+      <Setter Property="BorderBrush" Value="#553A9EFF" />
+    </Style>
+    <Style Selector="Window.design-blue Button:pointerover">
+      <Setter Property="BorderBrush" Value="#C95DB1FF" />
+    </Style>
+    <Style Selector="Window.design-blue TextBox">
+      <Setter Property="BorderBrush" Value="#445DA8FF" />
+    </Style>
+    <Style Selector="Window.design-blue Rectangle.red-slit">
+      <Setter Property="Fill" Value="#5562B6FF" />
+    </Style>
+    <Style Selector="Window.design-blue Ellipse.spark">
+      <Setter Property="Fill" Value="#AA76BEFF" />
     </Style>
   </Window.Styles>
 
@@ -310,10 +310,10 @@
         <TextBlock Text="SETTINGS" FontSize="17" FontWeight="Bold" LetterSpacing="1.4" />
 
         <TextBlock Grid.Row="1" Text="DESIGN PRESET" Margin="0,10,0,4" Foreground="#A8B7CA" />
-        <ComboBox Grid.Row="2" ItemsSource="{Binding DesignOptions}" SelectedItem="{Binding SelectedDesign}" />
+        <ComboBox Grid.Row="2" ItemsSource="{Binding DesignOptions}" SelectedItem="{Binding SelectedDesign, Mode=TwoWay}" />
 
         <TextBlock Grid.Row="3" Text="ICON STYLE" Margin="0,10,0,4" Foreground="#A8B7CA" />
-        <ComboBox Grid.Row="4" ItemsSource="{Binding IconOptions}" SelectedItem="{Binding SelectedIcon}" />
+        <ComboBox Grid.Row="4" ItemsSource="{Binding IconOptions}" SelectedItem="{Binding SelectedIcon, Mode=TwoWay}" />
 
         <Border Grid.Row="5" Classes="card-panel" Padding="8" Margin="0,12,0,0">
           <StackPanel Spacing="4">

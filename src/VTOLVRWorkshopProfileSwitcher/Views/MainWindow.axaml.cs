@@ -11,6 +11,8 @@ namespace VTOLVRWorkshopProfileSwitcher.Views;
 
 public partial class MainWindow : Window
 {
+    private MainWindowViewModel? _subscribedViewModel;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -38,8 +40,15 @@ public partial class MainWindow : Window
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedViewModel = null;
+        }
+
         if (DataContext is MainWindowViewModel vm)
         {
+            _subscribedViewModel = vm;
             vm.PropertyChanged += OnViewModelPropertyChanged;
             ApplyDesignPreset(vm.SelectedDesign);
             ApplyIconPreset(vm.SelectedIcon);
@@ -63,9 +72,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ApplyDesignPreset(string design)
+    private void ApplyDesignPreset(string? design)
     {
-        var isBlue = design.Equals("STEEL BLUE", StringComparison.OrdinalIgnoreCase);
+        var isBlue = string.Equals(design, "STEEL BLUE", StringComparison.OrdinalIgnoreCase);
         Classes.Set("design-blue", isBlue);
         Classes.Set("design-red", !isBlue);
     }

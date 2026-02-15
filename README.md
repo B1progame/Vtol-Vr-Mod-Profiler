@@ -1,64 +1,80 @@
-﻿# VTOL VR Workshop Profile Switcher
+# VTOL VR Workshop Profile Switcher
 
-Desktop tool for managing VTOL VR workshop content as reusable profiles.
+VTOL VR Workshop Profile Switcher is a desktop utility for managing VTOL VR Steam Workshop mods with reusable profiles.
 
-## What this code does
+![VTOL VR Workshop Profile Switcher](src/VTOLVRWorkshopProfileSwitcher/Assets/TacticalLogo.svg)
 
-This app scans your VTOL VR workshop directory (`steamapps/workshop/content/3018410`) and treats each workshop item folder as enabled or disabled:
+It helps you switch between mod setups by treating workshop folders as either enabled or disabled, then applying a saved profile in one action.
 
-- Enabled: folder name is the workshop ID (example: `1234567890`)
-- Disabled: folder name is prefixed with `_OFF_` (example: `_OFF_1234567890`)
+## What It Does
 
-You can toggle mods, save named profiles, and apply a profile later. Applying a profile renames folders to match the selected enabled set.
+- Scans your VTOL VR workshop folder (`steamapps/workshop/content/3018410`)
+- Detects enabled mods when folder name is `<WorkshopId>`
+- Detects disabled mods when folder name is `_OFF_<WorkshopId>`
+- Shows workshop items with display name, thumbnail, and download count (when available)
+- Lets you search, filter, select, and bulk-manage mods
+- Saves and loads named mod profiles
+- Applies profiles by renaming folders to match the selected enabled set
+- Creates a snapshot before applying changes so you can restore the last state
+- Supports deleting single or multiple mods from disk
+- Can open the Steam Workshop page after deleting a mod
 
-## Main features
+## Purpose
 
-- Auto-detects Steam library workshop paths from `libraryfolders.vdf`
-- Supports manual workshop path override
-- Lists workshop items with display name, thumbnail, and download count
-- Fetches missing metadata from Steam Workshop API when local metadata is not enough
-- Search/filter by mod name or workshop ID
-- Enable all / disable all / apply current toggles
-- Save, load, and delete named profiles
-- Creates a snapshot before applying changes, with restore-last-state support
-- File watcher auto-refreshes the UI when workshop folders change
-- Delete single or multiple mods from disk
-- Optional: open Steam workshop page after delete
-- App logging and crash logging
-- Includes Inno Setup installer build script
+The goal of this project is to make switching between different VTOL VR mod combinations fast and repeatable without manually renaming workshop folders every time.
 
-## Tech stack
+## How It Works (High Level)
 
-- .NET 8
-- Avalonia UI 11
-- CommunityToolkit.Mvvm
-- System.Text.Json
+1. The app detects your VTOL VR workshop path automatically from Steam library configuration (`libraryfolders.vdf`) or uses a manual path.
+2. It scans workshop subfolders and classifies each mod as enabled or disabled from the folder name.
+3. You choose which mods should be active, then save that state as a profile.
+4. When you apply a profile, the app renames folders (`<id>` or `_OFF_<id>`) to match the profile.
+5. Before renaming, it stores a snapshot backup of the current folder state for recovery.
 
-## Project structure
+## Main Features
 
-- `src/VTOLVRWorkshopProfileSwitcher` - Avalonia application source
-- `scripts/build-installer.ps1` - publish + installer build automation
-- `installer/VTOLVRWorkshopProfileSwitcher.iss` - Inno Setup script
+- Automatic Steam workshop path detection (with manual override)
+- Live refresh when workshop folders change (file system watcher)
+- Profile save, load, apply, and delete
+- Enable all, disable all, and apply current toggles
+- Restore last snapshot
+- Mod card view with thumbnail and metadata enrichment from Steam API
+- App operation logging and crash logging
+- Optional installer build script (PowerShell + Inno Setup)
 
-## Local data locations
+## Data and File Locations
 
-The app stores its data under:
+The app stores data under `%LOCALAPPDATA%\VTOLVR-WorkshopProfiles`:
 
-- `%LOCALAPPDATA%\VTOLVR-WorkshopProfiles\profiles` - saved profiles (`*.json`)
-- `%LOCALAPPDATA%\VTOLVR-WorkshopProfiles\backups` - snapshots before apply
-- `%LOCALAPPDATA%\VTOLVR-WorkshopProfiles\logs\app.log` - app operation logs
+- `profiles` - saved profile JSON files
+- `backups` - snapshot JSON files created before apply
+- `logs\app.log` - operation logs
 
-Crash logs are written to:
+Additional files:
 
-- `%USERPROFILE%\Documents\VTOLVR-WorkshopProfiles\logs\crash.log`
+- Crash log: `%USERPROFILE%\Documents\VTOLVR-WorkshopProfiles\logs\crash.log`
+- Thumbnail cache: `%LOCALAPPDATA%\VTOLVRWorkshopProfileSwitcher\thumbnail-cache`
 
-Thumbnail cache is written to:
+## Repository Structure
 
-- `%LOCALAPPDATA%\VTOLVRWorkshopProfileSwitcher\thumbnail-cache`
+- `src/VTOLVRWorkshopProfileSwitcher` - Avalonia app source code
+- `scripts/build-installer.ps1` - publish and installer automation
+- `installer/VTOLVRWorkshopProfileSwitcher.iss` - Inno Setup installer definition
 
-## Build and run (dev)
+## Installation
 
-From repository root:
+### Option 1: Use a Release Build / Installer
+
+If you have a packaged release, install and run `VTOLVRWorkshopProfileSwitcher`.
+
+### Option 2: Build and Run from Source
+
+Requirements:
+
+- .NET 8 SDK
+- Windows with Steam + VTOL VR workshop content
+
+Commands:
 
 ```powershell
 dotnet restore .\VTOLVRWorkshopProfileSwitcher.sln
@@ -66,27 +82,15 @@ dotnet build .\VTOLVRWorkshopProfileSwitcher.sln -c Release
 dotnet run --project .\src\VTOLVRWorkshopProfileSwitcher\VTOLVRWorkshopProfileSwitcher.csproj
 ```
 
-## Build installer
-
-Prerequisites:
-
-- .NET SDK 8
-- Inno Setup 6 (`ISCC.exe` at `C:\Program Files (x86)\Inno Setup 6\ISCC.exe`), or pass a custom path
-
-From repository root:
+Optional installer build (requires Inno Setup 6):
 
 ```powershell
 .\scripts\build-installer.ps1 -Configuration Release -Runtime win-x64 -Version 1.0.0
 ```
 
-Installer output:
-
-- `installer\output\VTOLVRWorkshopProfileSwitcher-Setup.exe`
-
-If Inno Setup is not installed, the script still publishes the app and prints the publish folder path.
-
 ## Notes
 
-- This tool changes workshop folder names to control active/inactive items.
-- Closing VTOL VR before applying profile changes is recommended.
-- Admin permissions may be requested by installer/uninstaller.
+- This tool controls mod activation by renaming workshop folders.
+- Closing VTOL VR before applying changes is recommended.
+
+If this project is useful to you, please consider giving it a star on GitHub.
