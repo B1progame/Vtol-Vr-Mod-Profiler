@@ -107,6 +107,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private bool canAutoInstallUpdate;
 
     [ObservableProperty]
+    private bool autoInstallUpdates;
+
+    [ObservableProperty]
     private string latestInstallerUrl = string.Empty;
 
     [ObservableProperty]
@@ -164,6 +167,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         SaveSettingsIfNeeded();
     }
 
+    partial void OnAutoInstallUpdatesChanged(bool value)
+    {
+        SaveSettingsIfNeeded();
+    }
+
     [RelayCommand]
     private void ToggleSettings()
     {
@@ -213,6 +221,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             else
             {
                 UpdateStatusText = $"New version available: {LatestReleaseVersion} (current {CurrentVersionText})";
+            }
+
+            if (AutoInstallUpdates && CanAutoInstallUpdate)
+            {
+                await DownloadAndInstallUpdateAsync();
             }
         }
         catch (HttpRequestException ex) when (ex.StatusCode.HasValue)
@@ -744,6 +757,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             }
 
             OpenSteamPageAfterDelete = settings.OpenSteamPageAfterDelete;
+            AutoInstallUpdates = settings.AutoInstallUpdates;
         }
         finally
         {
@@ -766,7 +780,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var settings = new AppSettings
         {
             SelectedDesign = SelectedDesign,
-            OpenSteamPageAfterDelete = OpenSteamPageAfterDelete
+            OpenSteamPageAfterDelete = OpenSteamPageAfterDelete,
+            AutoInstallUpdates = AutoInstallUpdates
         };
 
         try

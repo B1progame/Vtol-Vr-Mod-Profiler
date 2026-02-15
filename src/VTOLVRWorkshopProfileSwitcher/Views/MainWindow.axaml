@@ -391,6 +391,7 @@
         <Border Grid.Row="4" Classes="card-panel" Padding="8" Margin="0,10,0,0">
           <StackPanel Spacing="6">
             <TextBlock Text="UPDATES" FontWeight="Bold" />
+            <CheckBox Content="Auto install updates" IsChecked="{Binding AutoInstallUpdates}" />
             <TextBlock Text="{Binding UpdateStatusText}" Foreground="#A8B7CA" TextWrapping="Wrap" />
             <Button Content="CHECK FOR UPDATE" Command="{Binding CheckForUpdatesCommand}" />
             <Button Classes="rainbow-update"
