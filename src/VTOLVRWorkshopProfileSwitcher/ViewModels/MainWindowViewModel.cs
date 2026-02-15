@@ -116,6 +116,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string latestInstallerFileName = string.Empty;
 
+
     public IReadOnlyList<string> DesignOptions { get; } = new[] { "TACTICAL RED", "STEEL BLUE" };
     public string AppAuthor => "B1progame";
     public string AppCreatedOn => "2026-02-15";
