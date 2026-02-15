@@ -1,0 +1,33 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0A1A33"/>
+      <stop offset="100%" stop-color="#122B4F"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3D9BFF"/>
+      <stop offset="100%" stop-color="#8FD0FF"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x="48" y="48" width="928" height="928" rx="220" fill="url(#bg)"/>
+  <rect x="72" y="72" width="880" height="880" rx="196" fill="none" stroke="#224A80" stroke-width="12"/>
+
+  <polygon points="512,182 768,330 768,694 512,842 256,694 256,330" fill="none" stroke="#2B5E9D" stroke-width="16"/>
+  <polygon points="512,220 736,350 736,674 512,804 288,674 288,350" fill="none" stroke="#1B3F6C" stroke-width="8"/>
+
+  <g filter="url(#glow)">
+    <path d="M512 278 L560 410 L712 464 L560 518 L512 750 L464 518 L312 464 L464 410 Z" fill="url(#accent)"/>
+    <path d="M512 312 L544 416 L652 464 L544 512 L512 676 L480 512 L372 464 L480 416 Z" fill="#D7ECFF" opacity="0.88"/>
+  </g>
+
+  <rect x="236" y="760" width="552" height="120" rx="28" fill="#0E223F" stroke="#2E5F97" stroke-width="6"/>
+  <text x="512" y="838" text-anchor="middle" fill="#9ED4FF" font-family="Segoe UI, Bahnschrift, Arial" font-size="92" font-weight="700" letter-spacing="8">VTOL</text>
+</svg>

@@ -1,0 +1,341 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:VTOLVRWorkshopProfileSwitcher.ViewModels"
+        mc:Ignorable="d"
+        x:Class="VTOLVRWorkshopProfileSwitcher.Views.MainWindow"
+        x:Name="RootWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="VTOL VR Workshop Profile Switcher"
+        Width="1500"
+        Height="920"
+        MinWidth="1100"
+        MinHeight="700"
+        Background="#000000"
+        Opacity="0">
+
+  <Window.Transitions>
+    <Transitions>
+      <DoubleTransition Property="Opacity" Duration="0:0:0.28" Easing="CircularEaseOut" />
+    </Transitions>
+  </Window.Transitions>
+
+  <Window.Styles>
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="Bahnschrift, Segoe UI, Arial" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="#E7EDF9" />
+    </Style>
+
+    <Style Selector="Window.design-blue Border.chrome-panel">
+      <Setter Property="BorderBrush" Value="#663A9EFF" />
+    </Style>
+    <Style Selector="Window.design-blue Border.card-panel">
+      <Setter Property="BorderBrush" Value="#4D3A9EFF" />
+    </Style>
+    <Style Selector="Window.design-blue Button">
+      <Setter Property="BorderBrush" Value="#553A9EFF" />
+    </Style>
+    <Style Selector="Window.design-blue Button:pointerover">
+      <Setter Property="BorderBrush" Value="#C95DB1FF" />
+    </Style>
+    <Style Selector="Window.design-blue TextBox">
+      <Setter Property="BorderBrush" Value="#445DA8FF" />
+    </Style>
+    <Style Selector="Window.design-blue Rectangle.red-slit">
+      <Setter Property="Fill" Value="#5562B6FF" />
+    </Style>
+    <Style Selector="Window.design-blue Ellipse.spark">
+      <Setter Property="Fill" Value="#AA76BEFF" />
+    </Style>
+
+    <Style Selector="Border.chrome-panel">
+      <Setter Property="Background" Value="#B20A0F1C" />
+      <Setter Property="BorderBrush" Value="#66FF1A1A" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="CornerRadius" Value="8" />    </Style>
+
+    <Style Selector="Border.card-panel">
+      <Setter Property="Background" Value="#BF081224" />
+      <Setter Property="BorderBrush" Value="#4DFF1A1A" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />      <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+      <Setter Property="RenderTransform">
+        <ScaleTransform ScaleX="1" ScaleY="1" />
+      </Setter>
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" />
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Border.card-panel:pointerover">
+      <Setter Property="RenderTransform" Value="scale(1.02)" />
+      <Setter Property="BorderBrush" Value="#C9FF1A1A" />    </Style>
+
+    <Style Selector="Button">
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="#55FF1A1A" />
+      <Setter Property="Background" Value="#CC070E1A" />
+      <Setter Property="Foreground" Value="#EEF2FB" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.18" />
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button:pointerover">
+      <Setter Property="Background" Value="#E0121423" />
+      <Setter Property="BorderBrush" Value="#D9FF1A1A" />    </Style>
+
+    <Style Selector="Button:pressed">
+      <Setter Property="Background" Value="#CC3A0B10" />
+      <Setter Property="BorderBrush" Value="#FFFF4646" />    </Style>
+
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#CC040912" />
+      <Setter Property="BorderBrush" Value="#44FF1A1A" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="#E8EDF7" />
+      <Setter Property="CaretBrush" Value="#FF3A3A" />
+      <Setter Property="SelectionBrush" Value="#66FF1A1A" />
+    </Style>
+
+    <Style Selector="TextBox:pointerover">
+      <Setter Property="BorderBrush" Value="#99FF1A1A" />
+    </Style>
+
+    <Style Selector="ToggleSwitch.mod-toggle">
+      <Setter Property="OnContent" Value="ENABLED" />
+      <Setter Property="OffContent" Value="DISABLED" />
+    </Style>
+
+    <Style Selector="ScrollBar">
+      <Setter Property="Width" Value="8" />
+      <Setter Property="Height" Value="8" />
+      <Setter Property="Background" Value="#22000000" />
+      <Setter Property="Opacity" Value="0.85" />
+    </Style>
+
+    <Style Selector="Rectangle.red-slit">
+      <Setter Property="Fill" Value="#55FF1A1A" />
+      <Setter Property="Opacity" Value="0.14" />
+      <Style.Animations>
+        <Animation Duration="0:0:3.8" IterationCount="Infinite" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.08" /></KeyFrame>
+          <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.2" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+
+    <Style Selector="Ellipse.spark">
+      <Setter Property="Fill" Value="#AAFF2A2A" />
+      <Setter Property="Opacity" Value="0.20" />
+      <Style.Animations>
+        <Animation Duration="0:0:4.6" IterationCount="Infinite" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.05" /></KeyFrame>
+          <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.26" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.07" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+  </Window.Styles>
+
+  <Grid>
+    <Border>
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+          <GradientStop Color="#000000" Offset="0" />
+          <GradientStop Color="#050A13" Offset="0.35" />
+          <GradientStop Color="#0A0F1C" Offset="1" />
+        </LinearGradientBrush>
+      </Border.Background>
+    </Border>
+
+    <Canvas IsHitTestVisible="False" Opacity="0.9">
+      <Rectangle Classes="red-slit" Width="1500" Height="2" Canvas.Top="110" Canvas.Left="0" />
+      <Rectangle Classes="red-slit" Width="1500" Height="1" Canvas.Top="248" Canvas.Left="0" />
+      <Rectangle Classes="red-slit" Width="1500" Height="2" Canvas.Top="470" Canvas.Left="0" />
+      <Rectangle Classes="red-slit" Width="1500" Height="1" Canvas.Top="720" Canvas.Left="0" />
+
+      <Ellipse Classes="spark" Width="3" Height="3" Canvas.Left="210" Canvas.Top="170" />
+      <Ellipse Classes="spark" Width="2" Height="2" Canvas.Left="720" Canvas.Top="300" />
+      <Ellipse Classes="spark" Width="3" Height="3" Canvas.Left="1200" Canvas.Top="520" />
+      <Ellipse Classes="spark" Width="2" Height="2" Canvas.Left="960" Canvas.Top="760" />
+      <Ellipse Classes="spark" Width="2" Height="2" Canvas.Left="330" Canvas.Top="640" />
+    </Canvas>
+
+    <Grid x:Name="MainContentHost" Margin="16" Opacity="0">
+      <Grid.RenderTransform>
+        <TranslateTransform Y="14" />
+      </Grid.RenderTransform>
+      <Grid.Transitions>
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.28" Easing="CircularEaseOut" />
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.32" Easing="CircularEaseOut" />
+        </Transitions>
+      </Grid.Transitions>
+
+      <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="310,*">
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Classes="chrome-panel" Padding="14">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" VerticalAlignment="Center">
+            <Grid Width="64" Height="38" VerticalAlignment="Center">
+              <Path Data="M4,30 L25,6 L32,14 L16,34 Z" Fill="#E8FF1A1A" Opacity="0.92" Stretch="Fill" />
+              <Path Data="M30,30 L49,6 L60,14 L42,34 Z" Fill="#CCFF1A1A" Opacity="0.84" Stretch="Fill" />
+              <Path Data="M6,32 L26,8" Stroke="#FFFF6A6A" StrokeThickness="1.3" Opacity="0.7" />
+              <Path Data="M32,32 L50,8" Stroke="#FFFF6A6A" StrokeThickness="1.3" Opacity="0.7" />
+            </Grid>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="VTOL VR WORKSHOP PROFILE SWITCHER"
+                         FontSize="21"
+                         FontWeight="Bold"
+                         LetterSpacing="1.8" />
+              <TextBlock Text="TACTICAL MOD CONTROL"
+                         Foreground="#90A2BC"
+                         FontSize="11"
+                         LetterSpacing="1.2" />
+            </StackPanel>
+            <Button Grid.Column="2" Content="DETECT" Command="{Binding DetectPathsCommand}" MinWidth="96" />
+            <Button Grid.Column="3" Content="REFRESH" Command="{Binding RefreshModsCommand}" MinWidth="96" />
+            <Button Grid.Column="4" Content="RESTORE LAST STATE" Command="{Binding RestoreLastStateCommand}" MinWidth="180" />
+            <Button Grid.Column="5" Content="SETTINGS" Command="{Binding ToggleSettingsCommand}" MinWidth="104" />
+          </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Classes="chrome-panel" Padding="10">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto" VerticalAlignment="Center">
+            <TextBlock Text="WORKSHOP PATH" VerticalAlignment="Center" FontWeight="SemiBold" LetterSpacing="0.8" />
+            <TextBox Grid.Column="1" Text="{Binding ManualWorkshopPath}" Watermark="steamapps\workshop\content\3018410" />
+            <Button Grid.Column="2" Content="USE PATH" Command="{Binding UseManualPathCommand}" MinWidth="100" />
+            <TextBox Grid.Column="3" Width="290" Text="{Binding SearchQuery}" Watermark="SEARCH MODS..." />
+          </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Grid.Column="0" Classes="chrome-panel" Padding="12">
+          <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+            <TextBlock Text="PROFILES" FontSize="17" FontWeight="Bold" LetterSpacing="1.4" />
+            <TextBox Grid.Row="1" Watermark="PROFILE NAME" Text="{Binding ProfileNameInput}" />
+            <TextBox Grid.Row="2" Watermark="NOTES" Text="{Binding ProfileNotesInput}" />
+            <Grid Grid.Row="3" ColumnDefinitions="*,*">
+              <Button Grid.Column="0" Content="SAVE" Command="{Binding SaveProfileCommand}" />
+              <Button Grid.Column="1" Content="DELETE" Command="{Binding DeleteSelectedProfileCommand}" />
+            </Grid>
+            <Grid Grid.Row="4" RowDefinitions="*,Auto">
+              <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" Background="#66030A14" BorderBrush="#44FF1A1A">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ProfileItemViewModel">
+                    <Border Classes="card-panel" Padding="8" Margin="0,0,0,8">
+                      <StackPanel>
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Summary}" Foreground="#A2B2C9" FontSize="12" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <Button Grid.Row="1" Content="APPLY SELECTED PROFILE" Command="{Binding ApplySelectedProfileCommand}" />
+            </Grid>
+          </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Grid.Column="1" Classes="chrome-panel" Padding="10">
+          <Grid RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*">
+              <Button Content="ENABLE ALL" Command="{Binding EnableAllCommand}" MinWidth="108" />
+              <Button Grid.Column="1" Content="DISABLE ALL" Command="{Binding DisableAllCommand}" MinWidth="108" />
+              <Button Grid.Column="2" Content="APPLY TOGGLES" Command="{Binding ApplyCurrentTogglesCommand}" MinWidth="136" />
+              <Button Grid.Column="3" Content="SELECT ALL (FILTERED)" Command="{Binding SelectAllFilteredCommand}" MinWidth="172" />
+              <Button Grid.Column="4" Content="CLEAR" Command="{Binding ClearSelectionCommand}" MinWidth="84" />
+              <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" VerticalAlignment="Center">
+                <Button Content="DELETE SELECTED" Command="{Binding DeleteSelectedCommand}" Background="#7E171F" MinWidth="146" />
+                <CheckBox Content="Open Steam page after delete" IsChecked="{Binding OpenSteamPageAfterDelete}" />
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#9ED7FF" VerticalAlignment="Center" FontWeight="SemiBold" />
+              </StackPanel>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl ItemsSource="{Binding FilteredMods}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal" ItemWidth="236" ItemHeight="314" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ModItemViewModel">
+                    <Border Classes="card-panel" Margin="6" Padding="10">
+                      <Grid RowDefinitions="126,Auto,Auto,Auto,Auto,Auto,Auto">
+                        <Border Grid.Row="0" Background="#243043" CornerRadius="7" ClipToBounds="True">
+                          <Image Source="{Binding ThumbnailImage}" Stretch="UniformToFill" />
+                        </Border>
+                        <TextBlock Grid.Row="1" Text="{Binding ModName}" FontWeight="Bold" TextWrapping="Wrap" MaxHeight="40" />
+                        <TextBlock Grid.Row="2" Text="{Binding WorkshopId}" Foreground="#9FB0C8" FontSize="12" />
+                        <TextBlock Grid.Row="3" Text="{Binding DownloadCountText}" Foreground="#A8B7CA" FontSize="11" />
+                        <ToggleSwitch Grid.Row="4" Classes="mod-toggle" IsChecked="{Binding IsEnabled}" HorizontalAlignment="Stretch" />
+                        <CheckBox Grid.Row="5" Content="SELECT" IsChecked="{Binding IsSelected}" FontWeight="SemiBold" />
+                        <Button Grid.Row="6" Content="DELETE MOD" Background="#70161F" Command="{Binding DeleteCommand}" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Grid>
+        </Border>
+
+        <Border Grid.Row="3" Grid.ColumnSpan="2" Classes="chrome-panel" Padding="9">
+          <Grid ColumnDefinitions="*,*">
+            <TextBlock Text="{Binding SteamStatusPath}" Foreground="#A9B9CE" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="1" Text="{Binding ActiveWorkshopPath}" HorizontalAlignment="Right" Foreground="#90A2BC" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <Border IsVisible="{Binding IsSettingsOpen}"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Margin="0,24,24,0"
+            Width="360"
+            Classes="chrome-panel"
+            Padding="12"
+            ZIndex="100">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+        <TextBlock Text="SETTINGS" FontSize="17" FontWeight="Bold" LetterSpacing="1.4" />
+
+        <TextBlock Grid.Row="1" Text="DESIGN PRESET" Margin="0,10,0,4" Foreground="#A8B7CA" />
+        <ComboBox Grid.Row="2" ItemsSource="{Binding DesignOptions}" SelectedItem="{Binding SelectedDesign}" />
+
+        <TextBlock Grid.Row="3" Text="ICON STYLE" Margin="0,10,0,4" Foreground="#A8B7CA" />
+        <ComboBox Grid.Row="4" ItemsSource="{Binding IconOptions}" SelectedItem="{Binding SelectedIcon}" />
+
+        <Border Grid.Row="5" Classes="card-panel" Padding="8" Margin="0,12,0,0">
+          <StackPanel Spacing="4">
+            <TextBlock Text="APP INFO" FontWeight="Bold" />
+            <TextBlock Text="{Binding AppAuthor, StringFormat=Author: {0}}" Foreground="#A8B7CA" />
+            <TextBlock Text="{Binding AppCreatedOn, StringFormat=Created: {0}}" Foreground="#A8B7CA" />
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Row="6" Classes="card-panel" Padding="8" Margin="0,10,0,0">
+          <StackPanel Spacing="6">
+            <TextBlock Text="GITHUB LAST UPDATE" FontWeight="Bold" />
+            <TextBox Text="{Binding GitHubRepo}" Watermark="owner/repo" />
+            <Button Content="FETCH LAST UPDATE" Command="{Binding FetchGitHubLastUpdateCommand}" />
+            <TextBlock Text="{Binding GitHubLastUpdate}" Foreground="#A8B7CA" />
+          </StackPanel>
+        </Border>
+
+        <Button Grid.Row="7" Content="CLOSE" Margin="0,10,0,0" Command="{Binding ToggleSettingsCommand}" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
+
+
