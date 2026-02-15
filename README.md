@@ -2,7 +2,7 @@
 
 Switch VTOL VR Steam Workshop mod setups in seconds using reusable profiles.
 
-If you like this project, please consider giving it a star on GitHub.
+If you like this project, please consider giving it a star on GitHub. :star:
 
 ## TL;DR
 
