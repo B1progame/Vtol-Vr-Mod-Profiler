@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "o7+hEi0mj7U=",
+  "dgSpecHash": "0Lb5+uOkA0s=",
   "success": true,
   "projectFilePath": "C:\\Users\\bslid.BENJI-PC\\OneDrive\\Dokumente\\Vtol-vr-mod-profile\\Vtol-Vr-Mod-Profiler\\src\\VTOLVRWorkshopProfileSwitcher\\VTOLVRWorkshopProfileSwitcher.csproj",
   "expectedPackageFiles": [
@@ -24,7 +24,6 @@
     "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\harfbuzzsharp.nativeassets.webassembly\\7.3.0.3\\harfbuzzsharp.nativeassets.webassembly.7.3.0.3.nupkg.sha512",
     "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\harfbuzzsharp.nativeassets.win32\\7.3.0.3\\harfbuzzsharp.nativeassets.win32.7.3.0.3.nupkg.sha512",
     "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\microcom.runtime\\0.11.0\\microcom.runtime.0.11.0.nupkg.sha512",
-    "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.24\\microsoft.net.illink.tasks.8.0.24.nupkg.sha512",
     "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\reactiveui\\20.1.1\\reactiveui.20.1.1.nupkg.sha512",
     "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\skiasharp\\2.88.9\\skiasharp.2.88.9.nupkg.sha512",
     "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\skiasharp.nativeassets.linux\\2.88.9\\skiasharp.nativeassets.linux.2.88.9.nupkg.sha512",
@@ -37,10 +36,7 @@
     "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\system.reactive\\6.0.1\\system.reactive.6.0.1.nupkg.sha512",
     "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\system.text.encodings.web\\9.0.0\\system.text.encodings.web.9.0.0.nupkg.sha512",
     "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\system.text.json\\9.0.0\\system.text.json.9.0.0.nupkg.sha512",
-    "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\tmds.dbus.protocol\\0.20.0\\tmds.dbus.protocol.0.20.0.nupkg.sha512",
-    "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.24\\microsoft.netcore.app.runtime.win-x64.8.0.24.nupkg.sha512",
-    "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.24\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.24.nupkg.sha512",
-    "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.24\\microsoft.aspnetcore.app.runtime.win-x64.8.0.24.nupkg.sha512"
+    "C:\\Users\\bslid.BENJI-PC\\.nuget\\packages\\tmds.dbus.protocol\\0.20.0\\tmds.dbus.protocol.0.20.0.nupkg.sha512"
   ],
   "logs": []
 }

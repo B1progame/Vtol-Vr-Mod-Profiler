@@ -10,10 +10,10 @@
     <Authors>VTOLVR Workshop Tools</Authors>
     <Product>VTOL VR Workshop Profile Switcher</Product>
     <Description>Profile-based workshop mod folder switcher for VTOL VR.</Description>
-    <Version>1.0.1</Version>
-    <AssemblyVersion>1.0.1.0</AssemblyVersion>
-    <FileVersion>1.0.1.0</FileVersion>
-    <InformationalVersion>1.0.1</InformationalVersion>
+    <Version>1.0.2</Version>
+    <AssemblyVersion>1.0.2.0</AssemblyVersion>
+    <FileVersion>1.0.2.0</FileVersion>
+    <InformationalVersion>1.0.2</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,5 +29,6 @@
     <AvaloniaResource Include="Assets\**\*" />
   </ItemGroup>
 </Project>
+
 
 
