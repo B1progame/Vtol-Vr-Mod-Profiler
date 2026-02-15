@@ -16,6 +16,12 @@ $iconPath = Join-Path $PSScriptRoot "..\src\VTOLVRWorkshopProfileSwitcher\Assets
 Write-Host "Stopping running app if present..."
 Get-Process VTOLVRWorkshopProfileSwitcher -ErrorAction SilentlyContinue | Stop-Process -Force
 
+Write-Host "Restoring packages for runtime $Runtime ..."
+dotnet restore $project -r $Runtime
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet restore failed with exit code $LASTEXITCODE"
+}
+
 Write-Host "Publishing app to $publishDir ..."
 dotnet publish $project -c $Configuration -r $Runtime --self-contained true /p:PublishSingleFile=true -o $publishDir
 if ($LASTEXITCODE -ne 0) {
