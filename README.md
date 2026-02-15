@@ -8,7 +8,7 @@ VTOL VR Workshop Profile Switcher is a desktop utility for managing VTOL VR Stea
       <img src="src/VTOLVRWorkshopProfileSwitcher/Assets/AppIcon.png" alt="VTOL VR Workshop Profile Switcher app icon" width="220" />
     </td>
     <td align="center">
-      <img src="assets/75bc077dc55b270ae842ada9b5fb911a.jpg" alt="VTOL VR Workshop Profile Switcher blue app icon variant" width="220" />
+      <img src="assets/75bc077dc55b270ae842ada9b5fb911a.jpg" alt="Vtol-Vr" width="520" />
     </td>
   </tr>
 </table>
