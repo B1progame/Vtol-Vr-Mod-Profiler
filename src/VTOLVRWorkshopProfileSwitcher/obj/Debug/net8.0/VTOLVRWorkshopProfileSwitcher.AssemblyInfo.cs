@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Profile-based workshop mod folder switcher for VTOL VR.")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.2.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.2+d650ec1fa972c5dc76150ce7c537acd7db8588ae")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.2+487ce53c256bf978dcedab6993cc68fe96b560e2")]
 [assembly: System.Reflection.AssemblyProductAttribute("VTOL VR Workshop Profile Switcher")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VTOLVRWorkshopProfileSwitcher")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.2.0")]

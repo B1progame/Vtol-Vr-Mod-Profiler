@@ -20,7 +20,7 @@ This tool only helps you manage and switch between already downloaded mods. It r
 
 ## Screenshots
 
-![Main dashboard showing workshop path, profile controls, and mod grid with enable toggles](src/VTOLVRWorkshopProfileSwitcher/Assets/main-window.png)
+![Main dashboard showing workshop path, profile controls, and mod grid with enable toggles](src/VTOLVRWorkshopProfileSwitcher/Assets/main-window2.png)
 
 
 ## Feature Overview
