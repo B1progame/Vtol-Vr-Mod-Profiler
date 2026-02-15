@@ -6,6 +6,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,6 +21,11 @@ namespace VTOLVRWorkshopProfileSwitcher.ViewModels;
 
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
+    private const string GitHubOwner = "B1progame";
+    private const string GitHubRepoName = "Vtol-Vr-Mod-Profiler";
+    private const string ReleasesPageUrl = "https://github.com/B1progame/Vtol-Vr-Mod-Profiler/releases";
+    private static readonly Version CurrentAppVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
+    private static readonly string CurrentVersionId = GetCurrentVersionId();
     private static readonly HttpClient GitHubHttpClient = new();
     private readonly AppPaths _appPaths = new();
     private readonly SteamLibraryDetector _detector = new();
@@ -27,10 +34,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly WorkshopWatcherService _watcher = new();
     private readonly ProfileService _profileService;
     private readonly BackupService _backupService;
+    private readonly AppSettingsService _settingsService;
     private readonly AppLogger _logger;
 
     private readonly ObservableCollection<ModItemViewModel> _allMods = new();
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private bool _suppressSettingsSave;
 
     [ObservableProperty]
     private ObservableCollection<ModItemViewModel> filteredMods = new();
@@ -75,23 +84,31 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private string selectedDesign = "TACTICAL RED";
 
     [ObservableProperty]
-    private string selectedIcon = "RED STRIKE";
+    private bool hasUpdateAvailable;
 
     [ObservableProperty]
-    private string gitHubRepo = "owner/repo";
+    private string latestReleaseVersion = "Not checked";
 
     [ObservableProperty]
-    private string gitHubLastUpdate = "Not fetched";
+    private string latestReleaseUrl = ReleasesPageUrl;
+
+    [ObservableProperty]
+    private string updateStatusText = "Checking for updates...";
+
+    [ObservableProperty]
+    private bool isCheckingForUpdates;
 
     public IReadOnlyList<string> DesignOptions { get; } = new[] { "TACTICAL RED", "STEEL BLUE" };
-    public IReadOnlyList<string> IconOptions { get; } = new[] { "RED STRIKE", "BLUE GHOST" };
     public string AppAuthor => "VTOLVR Workshop Tools";
     public string AppCreatedOn => "2026-02-15";
+    public string CurrentVersionText => $"v{CurrentAppVersion.Major}.{CurrentAppVersion.Minor}.{CurrentAppVersion.Build}";
+    public string CurrentVersionIdText => CurrentVersionId;
 
     public MainWindowViewModel()
     {
         _profileService = new ProfileService(_appPaths);
         _backupService = new BackupService(_appPaths);
+        _settingsService = new AppSettingsService(_appPaths);
         _logger = new AppLogger(_appPaths);
 
         _allMods.CollectionChanged += OnModsCollectionChanged;
@@ -123,6 +140,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ProfileNotesInput = value.Notes;
     }
 
+    partial void OnSelectedDesignChanged(string value)
+    {
+        SaveSettingsIfNeeded();
+    }
+
+    partial void OnOpenSteamPageAfterDeleteChanged(bool value)
+    {
+        SaveSettingsIfNeeded();
+    }
+
     [RelayCommand]
     private void ToggleSettings()
     {
@@ -130,53 +157,66 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task FetchGitHubLastUpdateAsync()
+    private async Task CheckForUpdatesAsync()
     {
-        var repo = GitHubRepo.Trim();
-        if (string.IsNullOrWhiteSpace(repo) || !repo.Contains('/'))
+        if (IsCheckingForUpdates)
         {
-            GitHubLastUpdate = "Invalid repo format (owner/repo)";
             return;
         }
 
+        IsCheckingForUpdates = true;
         try
         {
-            var url = $"https://api.github.com/repos/{repo}/commits?per_page=1";
-            using var response = await GitHubHttpClient.GetAsync(url);
-            if (!response.IsSuccessStatusCode)
+            var latest = await TryGetLatestReleaseAsync();
+            if (latest is null)
             {
-                GitHubLastUpdate = $"GitHub error: {(int)response.StatusCode}";
+                HasUpdateAvailable = false;
+                LatestReleaseVersion = "None";
+                LatestReleaseUrl = ReleasesPageUrl;
+                UpdateStatusText = "No GitHub releases published yet.";
                 return;
             }
 
-            await using var stream = await response.Content.ReadAsStreamAsync();
-            using var doc = await JsonDocument.ParseAsync(stream);
-            var root = doc.RootElement;
-            if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() == 0)
-            {
-                GitHubLastUpdate = "No commits found";
-                return;
-            }
+            var latestTag = latest.Value.TagName;
+            LatestReleaseVersion = string.IsNullOrWhiteSpace(latestTag) ? "Unknown" : latestTag;
+            LatestReleaseUrl = string.IsNullOrWhiteSpace(latest.Value.HtmlUrl) ? ReleasesPageUrl : latest.Value.HtmlUrl;
+            HasUpdateAvailable = IsUpdateAvailable(latestTag, CurrentAppVersion, CurrentVersionId);
 
-            var first = root[0];
-            var dateText = first
-                .GetProperty("commit")
-                .GetProperty("author")
-                .GetProperty("date")
-                .GetString();
-
-            if (DateTimeOffset.TryParse(dateText, out var parsed))
-            {
-                GitHubLastUpdate = parsed.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-            }
-            else
-            {
-                GitHubLastUpdate = dateText ?? "Unknown";
-            }
+            UpdateStatusText = HasUpdateAvailable
+                ? $"New version available: {LatestReleaseVersion} (current {CurrentVersionText})"
+                : $"You are up to date ({CurrentVersionText}, id {CurrentVersionIdText})";
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode.HasValue)
+        {
+            HasUpdateAvailable = false;
+            UpdateStatusText = $"Update check failed ({(int)ex.StatusCode.Value})";
         }
         catch
         {
-            GitHubLastUpdate = "Fetch failed";
+            HasUpdateAvailable = false;
+            UpdateStatusText = "Update check failed";
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenLatestRelease()
+    {
+        var target = string.IsNullOrWhiteSpace(LatestReleaseUrl) ? ReleasesPageUrl : LatestReleaseUrl;
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = target,
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Ignore launch failures.
         }
     }
 
@@ -475,8 +515,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private async Task InitializeAsync()
     {
+        await LoadSettingsAsync();
         await DetectPathsAsync();
         await LoadProfilesAsync();
+        await CheckForUpdatesAsync();
     }
 
     private async Task LoadProfilesAsync()
@@ -617,6 +659,169 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             GitHubHttpClient.DefaultRequestHeaders.UserAgent.Add(
                 new ProductInfoHeaderValue("VTOLVRWorkshopProfileSwitcher", "1.0"));
         }
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _suppressSettingsSave = true;
+        try
+        {
+            var settings = await _settingsService.LoadAsync();
+
+            if (DesignOptions.Contains(settings.SelectedDesign, StringComparer.OrdinalIgnoreCase))
+            {
+                SelectedDesign = settings.SelectedDesign;
+            }
+
+            OpenSteamPageAfterDelete = settings.OpenSteamPageAfterDelete;
+        }
+        finally
+        {
+            _suppressSettingsSave = false;
+        }
+    }
+
+    private void SaveSettingsIfNeeded()
+    {
+        if (_suppressSettingsSave)
+        {
+            return;
+        }
+
+        _ = SaveSettingsAsync();
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        var settings = new AppSettings
+        {
+            SelectedDesign = SelectedDesign,
+            OpenSteamPageAfterDelete = OpenSteamPageAfterDelete
+        };
+
+        try
+        {
+            await _settingsService.SaveAsync(settings);
+        }
+        catch
+        {
+            // Ignore settings save failures.
+        }
+    }
+
+    private static bool IsUpdateAvailable(string? latestTag, Version currentVersion)
+    {
+        return IsUpdateAvailable(latestTag, currentVersion, NormalizeTag($"v{currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}"));
+    }
+
+    private static bool IsUpdateAvailable(string? latestTag, Version currentVersion, string currentVersionId)
+    {
+        var normalizedTag = NormalizeTag(latestTag);
+        if (string.IsNullOrWhiteSpace(normalizedTag))
+        {
+            return false;
+        }
+
+        if (string.Equals(normalizedTag, NormalizeTag(currentVersionId), StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var latest = ParseVersion(latestTag);
+        if (latest is not null)
+        {
+            return latest > currentVersion;
+        }
+
+        var normalizedCurrent = NormalizeTag($"v{currentVersion.Major}.{currentVersion.Minor}.{currentVersion.Build}");
+        return !string.IsNullOrWhiteSpace(normalizedTag) &&
+               !string.Equals(normalizedTag, normalizedCurrent, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static Version? ParseVersion(string? tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            return null;
+        }
+
+        var normalized = tag.Trim().TrimStart('v', 'V');
+        return Version.TryParse(normalized, out var parsed) ? parsed : null;
+    }
+
+    private static string NormalizeTag(string? tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            return string.Empty;
+        }
+
+        return tag.Trim().TrimStart('v', 'V');
+    }
+
+    private static string GetCurrentVersionId()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(informational))
+        {
+            return NormalizeTag(informational);
+        }
+
+        var version = assembly.GetName().Version ?? new Version(1, 0, 0, 0);
+        return $"{version.Major}.{version.Minor}.{version.Build}";
+    }
+
+    private async Task<(string TagName, string HtmlUrl)?> TryGetLatestReleaseAsync()
+    {
+        var latestUrl = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepoName}/releases/latest";
+        using var latestResponse = await GitHubHttpClient.GetAsync(latestUrl);
+
+        if (latestResponse.IsSuccessStatusCode)
+        {
+            return await ReadReleaseAsync(latestResponse);
+        }
+
+        if (latestResponse.StatusCode != HttpStatusCode.NotFound)
+        {
+            throw new HttpRequestException(
+                $"GitHub request failed with status {(int)latestResponse.StatusCode}",
+                null,
+                latestResponse.StatusCode);
+        }
+
+        var listUrl = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepoName}/releases?per_page=1";
+        using var listResponse = await GitHubHttpClient.GetAsync(listUrl);
+        if (!listResponse.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"GitHub request failed with status {(int)listResponse.StatusCode}",
+                null,
+                listResponse.StatusCode);
+        }
+
+        await using var listStream = await listResponse.Content.ReadAsStreamAsync();
+        using var listDoc = await JsonDocument.ParseAsync(listStream);
+        var root = listDoc.RootElement;
+        if (root.ValueKind != JsonValueKind.Array || root.GetArrayLength() == 0)
+        {
+            return null;
+        }
+
+        var first = root[0];
+        var tag = first.TryGetProperty("tag_name", out var tagEl) ? tagEl.GetString() : null;
+        var html = first.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null;
+        return (tag ?? string.Empty, html ?? ReleasesPageUrl);
+    }
+
+    private static async Task<(string TagName, string HtmlUrl)> ReadReleaseAsync(HttpResponseMessage response)
+    {
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        using var doc = await JsonDocument.ParseAsync(stream);
+        var root = doc.RootElement;
+        var tag = root.TryGetProperty("tag_name", out var tagEl) ? tagEl.GetString() : null;
+        var html = root.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null;
+        return (tag ?? string.Empty, html ?? ReleasesPageUrl);
     }
 }
 

@@ -10,6 +10,10 @@
     <Authors>VTOLVR Workshop Tools</Authors>
     <Product>VTOL VR Workshop Profile Switcher</Product>
     <Description>Profile-based workshop mod folder switcher for VTOL VR.</Description>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

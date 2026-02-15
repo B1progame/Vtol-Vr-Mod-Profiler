@@ -9,6 +9,7 @@ public sealed class AppPaths
     public string ProfilesDir { get; }
     public string BackupsDir { get; }
     public string LogsDir { get; }
+    public string SettingsFile { get; }
     public string LogFile => Path.Combine(LogsDir, "app.log");
 
     public AppPaths()
@@ -19,6 +20,7 @@ public sealed class AppPaths
         ProfilesDir = Path.Combine(BaseDir, "profiles");
         BackupsDir = Path.Combine(BaseDir, "backups");
         LogsDir = Path.Combine(BaseDir, "logs");
+        SettingsFile = Path.Combine(BaseDir, "settings.json");
 
         Directory.CreateDirectory(BaseDir);
         Directory.CreateDirectory(ProfilesDir);

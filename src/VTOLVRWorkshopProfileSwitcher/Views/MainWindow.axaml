@@ -76,6 +76,66 @@
       <Setter Property="Background" Value="#CC3A0B10" />
       <Setter Property="BorderBrush" Value="#FFFF4646" />    </Style>
 
+    <Style Selector="Button.rainbow-update">
+      <Setter Property="Background" Value="#CCFF3B30" />
+      <Setter Property="BorderBrush" Value="#FFFFB74D" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="Foreground" Value="#FFFFFFFF" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+      <Setter Property="RenderTransform">
+        <ScaleTransform ScaleX="1" ScaleY="1" />
+      </Setter>
+      <Style.Animations>
+        <Animation Duration="0:0:3.2" IterationCount="Infinite">
+          <KeyFrame Cue="0%">
+            <Setter Property="Background" Value="#CCFF3B30" />
+            <Setter Property="BorderBrush" Value="#FFFFA65A" />
+          </KeyFrame>
+          <KeyFrame Cue="20%">
+            <Setter Property="Background" Value="#CCFF9800" />
+            <Setter Property="BorderBrush" Value="#FFFFE082" />
+          </KeyFrame>
+          <KeyFrame Cue="40%">
+            <Setter Property="Background" Value="#CC66BB6A" />
+            <Setter Property="BorderBrush" Value="#FFA5D6A7" />
+          </KeyFrame>
+          <KeyFrame Cue="60%">
+            <Setter Property="Background" Value="#CC29B6F6" />
+            <Setter Property="BorderBrush" Value="#FF81D4FA" />
+          </KeyFrame>
+          <KeyFrame Cue="80%">
+            <Setter Property="Background" Value="#CC7E57C2" />
+            <Setter Property="BorderBrush" Value="#FFB39DDB" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Background" Value="#CCE91E63" />
+            <Setter Property="BorderBrush" Value="#FFF48FB1" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+
+    <Style Selector="Button.rainbow-update:pointerover">
+      <Setter Property="RenderTransform" Value="scale(1.03)" />
+    </Style>
+
+    <Style Selector="Border.update-badge">
+      <Setter Property="Background" Value="#FFF2D232" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="MinWidth" Value="16" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Style.Animations>
+        <Animation Duration="0:0:1.1" IterationCount="Infinite" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.55" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+
     <Style Selector="TextBox">
       <Setter Property="Background" Value="#CC040912" />
       <Setter Property="BorderBrush" Value="#44FF1A1A" />
@@ -205,7 +265,14 @@
             <Button Grid.Column="2" Content="DETECT" Command="{Binding DetectPathsCommand}" MinWidth="96" />
             <Button Grid.Column="3" Content="REFRESH" Command="{Binding RefreshModsCommand}" MinWidth="96" />
             <Button Grid.Column="4" Content="RESTORE LAST STATE" Command="{Binding RestoreLastStateCommand}" MinWidth="180" />
-            <Button Grid.Column="5" Content="SETTINGS" Command="{Binding ToggleSettingsCommand}" MinWidth="104" />
+            <Button Grid.Column="5" Command="{Binding ToggleSettingsCommand}" MinWidth="118">
+              <Grid ColumnDefinitions="Auto,Auto">
+                <TextBlock Text="SETTINGS" />
+                <Border Grid.Column="1" Classes="update-badge" Margin="6,0,0,0" IsVisible="{Binding HasUpdateAvailable}">
+                  <TextBlock Text="!" Foreground="#121212" FontWeight="Bold" HorizontalAlignment="Center" />
+                </Border>
+              </Grid>
+            </Button>
           </Grid>
         </Border>
 
@@ -306,33 +373,43 @@
             Classes="chrome-panel"
             Padding="12"
             ZIndex="100">
-      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
         <TextBlock Text="SETTINGS" FontSize="17" FontWeight="Bold" LetterSpacing="1.4" />
 
         <TextBlock Grid.Row="1" Text="DESIGN PRESET" Margin="0,10,0,4" Foreground="#A8B7CA" />
         <ComboBox Grid.Row="2" ItemsSource="{Binding DesignOptions}" SelectedItem="{Binding SelectedDesign, Mode=TwoWay}" />
 
-        <TextBlock Grid.Row="3" Text="ICON STYLE" Margin="0,10,0,4" Foreground="#A8B7CA" />
-        <ComboBox Grid.Row="4" ItemsSource="{Binding IconOptions}" SelectedItem="{Binding SelectedIcon, Mode=TwoWay}" />
-
-        <Border Grid.Row="5" Classes="card-panel" Padding="8" Margin="0,12,0,0">
+        <Border Grid.Row="3" Classes="card-panel" Padding="8" Margin="0,12,0,0">
           <StackPanel Spacing="4">
             <TextBlock Text="APP INFO" FontWeight="Bold" />
             <TextBlock Text="{Binding AppAuthor, StringFormat=Author: {0}}" Foreground="#A8B7CA" />
             <TextBlock Text="{Binding AppCreatedOn, StringFormat=Created: {0}}" Foreground="#A8B7CA" />
+            <TextBlock Text="{Binding CurrentVersionText, StringFormat=Current Version: {0}}" Foreground="#A8B7CA" />
           </StackPanel>
         </Border>
 
-        <Border Grid.Row="6" Classes="card-panel" Padding="8" Margin="0,10,0,0">
+        <Border Grid.Row="4" Classes="card-panel" Padding="8" Margin="0,10,0,0">
           <StackPanel Spacing="6">
-            <TextBlock Text="GITHUB LAST UPDATE" FontWeight="Bold" />
-            <TextBox Text="{Binding GitHubRepo}" Watermark="owner/repo" />
-            <Button Content="FETCH LAST UPDATE" Command="{Binding FetchGitHubLastUpdateCommand}" />
-            <TextBlock Text="{Binding GitHubLastUpdate}" Foreground="#A8B7CA" />
+            <TextBlock Text="UPDATES" FontWeight="Bold" />
+            <TextBlock Text="{Binding UpdateStatusText}" Foreground="#A8B7CA" TextWrapping="Wrap" />
+            <Button Content="CHECK FOR UPDATE" Command="{Binding CheckForUpdatesCommand}" />
+            <Button Classes="rainbow-update"
+                    IsVisible="{Binding HasUpdateAvailable}"
+                    Command="{Binding OpenLatestReleaseCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <Path Data="M7,1 L7,9 M3,6 L7,10 L11,6 M2,12 L12,12"
+                      Stroke="#FFFFFFFF"
+                      StrokeThickness="1.6"
+                      Stretch="Uniform"
+                      Width="14"
+                      Height="14" />
+                <TextBlock Text="DOWNLOAD NEW VERSION" />
+              </StackPanel>
+            </Button>
           </StackPanel>
         </Border>
 
-        <Button Grid.Row="7" Content="CLOSE" Margin="0,10,0,0" Command="{Binding ToggleSettingsCommand}" />
+        <Button Grid.Row="5" Content="CLOSE" Margin="0,10,0,0" Command="{Binding ToggleSettingsCommand}" />
       </Grid>
     </Border>
   </Grid>

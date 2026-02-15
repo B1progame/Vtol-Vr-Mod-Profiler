@@ -1,7 +1,5 @@
 using System;
 using System.ComponentModel;
-using System.IO;
-using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -51,7 +49,6 @@ public partial class MainWindow : Window
             _subscribedViewModel = vm;
             vm.PropertyChanged += OnViewModelPropertyChanged;
             ApplyDesignPreset(vm.SelectedDesign);
-            ApplyIconPreset(vm.SelectedIcon);
         }
     }
 
@@ -66,10 +63,6 @@ public partial class MainWindow : Window
         {
             ApplyDesignPreset(vm.SelectedDesign);
         }
-        else if (e.PropertyName == nameof(MainWindowViewModel.SelectedIcon))
-        {
-            ApplyIconPreset(vm.SelectedIcon);
-        }
     }
 
     private void ApplyDesignPreset(string? design)
@@ -77,39 +70,5 @@ public partial class MainWindow : Window
         var isBlue = string.Equals(design, "STEEL BLUE", StringComparison.OrdinalIgnoreCase);
         Classes.Set("design-blue", isBlue);
         Classes.Set("design-red", !isBlue);
-    }
-
-    private void ApplyIconPreset(string iconPreset)
-    {
-        var fileName = iconPreset.Equals("BLUE GHOST", StringComparison.OrdinalIgnoreCase)
-            ? "AppIconBlue.ico"
-            : "AppIcon.ico";
-
-        var iconPath = ResolveAssetPath(fileName);
-        if (iconPath is null || !File.Exists(iconPath))
-        {
-            return;
-        }
-
-        try
-        {
-            Icon = new WindowIcon(iconPath);
-        }
-        catch
-        {
-            // Ignore icon load failures.
-        }
-    }
-
-    private static string? ResolveAssetPath(string fileName)
-    {
-        var candidates = new[]
-        {
-            Path.Combine(AppContext.BaseDirectory, "Assets", fileName),
-            Path.Combine(AppContext.BaseDirectory, fileName),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Assets", fileName))
-        };
-
-        return candidates.FirstOrDefault(File.Exists);
     }
 }
