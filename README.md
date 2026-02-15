@@ -102,4 +102,4 @@ Optional installer build (requires Inno Setup 6):
 .\scripts\build-installer.ps1 -Configuration Release -Runtime win-x64 -Version 1.0.0
 ```
 
-If this project is useful to you, please consider giving it a star on GitHub.
+If this project is useful to you, please consider giving it a star on GitHub. :star:
