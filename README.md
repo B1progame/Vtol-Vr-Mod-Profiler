@@ -1,94 +1,72 @@
 # VTOL VR Workshop Profile Switcher
 
-VTOL VR Workshop Profile Switcher is a desktop utility for managing VTOL VR Steam Workshop mods with reusable profiles.
+Switch VTOL VR Steam Workshop mod setups in seconds using reusable profiles.
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="src/VTOLVRWorkshopProfileSwitcher/Assets/AppIcon.png" alt="VTOL VR Workshop Profile Switcher app icon" width="220" />
-    </td>
-    <td align="center">
-      <img src="src/VTOLVRWorkshopProfileSwitcher/Assets/75bc077dc55b270ae842ada9b5fb911a.jpg" alt="Vtol-Vr" width="520" />
-    </td>
-  </tr>
-</table>
+If you like this project, please consider giving it a star on GitHub.
 
-It helps you switch between mod setups by treating workshop folders as either enabled or disabled, then applying a saved profile in one action.
+## TL;DR
 
-## What It Does
+`VTOL VR Workshop Profile Switcher` scans your VTOL VR Workshop folder, lets you save named mod profiles, and applies them by renaming mod folders between enabled (`<WorkshopId>`) and disabled (`_OFF_<WorkshopId>`) states. It also supports live refresh, logs, and snapshot backups before changes.
 
-- Scans your VTOL VR workshop folder (`steamapps/workshop/content/3018410`)
-- Detects enabled mods when folder name is `<WorkshopId>`
-- Detects disabled mods when folder name is `_OFF_<WorkshopId>`
-- Shows workshop items with display name, thumbnail, and download count (when available)
-- Lets you search, filter, select, and bulk-manage mods
-- Saves and loads named mod profiles
-- Applies profiles by renaming folders to match the selected enabled set
-- Creates a snapshot before applying changes so you can restore the last state
-- Supports deleting single or multiple mods from disk
-- Can open the Steam Workshop page after deleting a mod
+## Requirements
 
-## Features
+This tool only helps you manage and switch between already downloaded mods. It requires the official VTOL VR Mod Loader and existing Workshop mods to function.
 
-- Automatic Steam workshop path detection (with manual override)
-- Live refresh when workshop folders change (file system watcher)
-- Profile save, load, apply, and delete
-- Enable all, disable all, and apply current toggles
-- Restore last snapshot
-- Mod card view with thumbnail and metadata enrichment from Steam API
-- App operation logging and crash logging
-- Optional installer build script (PowerShell + Inno Setup)
+- Install the official VTOL VR Mod Loader from Steam first.
+- Download your mods through the Mod Loader before using this app.
+- This tool does not install, update, or download mods.
+- This app is a helper/profile manager for mods you already have.
+- It does not replace the official Mod Loader.
 
-## Workflow (High Level)
+## Screenshots
 
-1. The app detects your VTOL VR workshop path automatically from Steam library configuration (`libraryfolders.vdf`) or uses a manual path.
-2. It scans workshop subfolders and classifies each mod as enabled or disabled from the folder name.
-3. You choose which mods should be active, then save that state as a profile.
-4. When you apply a profile, the app renames folders (`<id>` or `_OFF_<id>`) to match the profile.
-5. Before renaming, it stores a snapshot backup of the current folder state for recovery.
+![Main dashboard showing workshop path, profile controls, and mod grid with enable toggles](src/VTOLVRWorkshopProfileSwitcher/Assets/main-window.png)
 
-## Purpose
 
-The goal of this project is to make switching between different VTOL VR mod combinations fast and repeatable without manually renaming workshop folders every time.
+## Feature Overview
 
-## Data & File Locations
+| Feature | Included |
+| --- | --- |
+| Auto-detect VTOL VR Workshop path from Steam libraries | &#10003; |
+| Manual Workshop path override | &#10003; |
+| Detect enabled/disabled mods from folder naming | &#10003; |
+| Save and load named profiles | &#10003; |
+| One-click apply profile (folder rename engine) | &#10003; |
+| Snapshot backup before apply | &#10003; |
+| Restore latest snapshot | &#10003; |
+| Live folder refresh / watcher | &#10003; |
+| Search/filter and bulk toggle mods | &#10003; |
+| Logging (operations and crash logs) | &#10003; |
+| Built-in Steam Workshop page opening after delete | &#10003; |
+| CLI mode | &#10007; |
+| Drag-and-drop mod package import | &#10007; |
 
-The app stores data under `%LOCALAPPDATA%\VTOLVR-WorkshopProfiles`:
+## How to Use
 
-- `profiles` - saved profile JSON files
-- `backups` - snapshot JSON files created before apply
-- `logs\app.log` - operation logs
+1. Scan and review mods.
+Open the app, confirm the Workshop folder path (`steamapps/workshop/content/3018410`), and let it scan your mods.
 
-Additional files:
+2. Create a profile.
+Enable/disable mods in the UI, then save that selection as a named profile (for example, `PvE Coop` or `Vanilla+`).
 
-- Crash log: `%USERPROFILE%\Documents\VTOLVR-WorkshopProfiles\logs\crash.log`
-- Thumbnail cache: `%LOCALAPPDATA%\VTOLVRWorkshopProfileSwitcher\thumbnail-cache`
-
-## Repository Structure
-
-- `src/VTOLVRWorkshopProfileSwitcher` - Avalonia app source code
-- `scripts/build-installer.ps1` - publish and installer automation
-- `installer/VTOLVRWorkshopProfileSwitcher.iss` - Inno Setup installer definition
-
-## Notes
-
-- This tool controls mod activation by renaming workshop folders.
-- Closing VTOL VR before applying changes is recommended.
+3. Apply when needed.
+Select a saved profile and click apply. The app renames folders to match your profile and creates a snapshot backup first.
 
 ## Installation
 
-### Option 1: Use a Release Build / Installer
+### Option 1: Use a Release Build (Recommended)
 
-If you have a packaged release, install and run `VTOLVRWorkshopProfileSwitcher`.
+1. Open the repo's `Releases` page.
+2. Download the latest installer or packaged build for Windows.
+3. Install and launch `VTOLVRWorkshopProfileSwitcher`.
 
-### Option 2: Build and Run from Source
+### Option 2: Build from Source (.NET 8)
 
 Requirements:
 
+- Windows
 - .NET 8 SDK
-- Windows with Steam + VTOL VR workshop content
-
-Commands:
+- Steam with VTOL VR Workshop content installed
 
 ```powershell
 dotnet restore .\VTOLVRWorkshopProfileSwitcher.sln
@@ -102,4 +80,65 @@ Optional installer build (requires Inno Setup 6):
 .\scripts\build-installer.ps1 -Configuration Release -Runtime win-x64 -Version 1.0.0
 ```
 
-If this project is useful to you, please consider giving it a star on GitHub. :star:
+## Safe Usage, Backups, and Warnings
+
+- Close VTOL VR before applying profile changes.
+- The app changes mod state by renaming Workshop folders.
+- A snapshot backup is created before profile apply.
+- Keep your Steam Workshop content fully synced before switching profiles.
+- If anything looks wrong, use restore snapshot before making more changes.
+
+Data locations:
+
+- `%LOCALAPPDATA%\VTOLVR-WorkshopProfiles\profiles` - saved profiles
+- `%LOCALAPPDATA%\VTOLVR-WorkshopProfiles\backups` - apply snapshots
+- `%LOCALAPPDATA%\VTOLVR-WorkshopProfiles\logs\app.log` - app logs
+- `%USERPROFILE%\Documents\VTOLVR-WorkshopProfiles\logs\crash.log` - crash logs
+- `%LOCALAPPDATA%\VTOLVRWorkshopProfileSwitcher\thumbnail-cache` - image cache
+
+## Troubleshooting / FAQ
+
+### The app cannot find my Workshop folder
+
+Use manual path override and point to:
+`<SteamLibrary>\steamapps\workshop\content\3018410`
+
+### My mods did not switch as expected
+
+Close VTOL VR and Steam, reopen the app, rescan, then apply again. If needed, restore the latest snapshot backup.
+
+### A mod is missing metadata or thumbnail
+
+This can happen when Steam metadata is unavailable. The mod can still be managed by Workshop ID.
+
+### I applied a profile and now want to go back
+
+Use the restore snapshot action to revert to the last pre-apply state.
+
+### Where are logs?
+
+See the paths in the Safe Usage section above.
+
+## Community Requests / Questions
+
+We want your feedback and ideas:
+
+- What features should we add next?
+- What integrations would help your workflow most?
+- What workflow improvements would make profile switching faster?
+- What UX changes would make the app easier to use?
+- Do you have mockups or concept ideas we should explore?
+
+Please open a GitHub issue for feature suggestions, workflow ideas, UX suggestions, and concept/mockup proposals.
+
+## Roadmap (Optional)
+
+- CLI support for scripted profile switching
+- Profile or mod package sharing/import/export
+- Drag-and-drop workflow improvements
+- Quest-related compatibility ideas
+- Multi-platform support improvements
+
+## Contributing
+
+Issues and pull requests are welcome. Small fixes, UX improvements, bug reports, and feature requests all help.

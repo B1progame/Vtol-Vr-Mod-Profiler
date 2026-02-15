@@ -296,9 +296,10 @@
             <TextBlock Text="PROFILES" FontSize="17" FontWeight="Bold" LetterSpacing="1.4" />
             <TextBox Grid.Row="1" Watermark="PROFILE NAME" Text="{Binding ProfileNameInput}" />
             <TextBox Grid.Row="2" Watermark="NOTES" Text="{Binding ProfileNotesInput}" />
-            <Grid Grid.Row="3" ColumnDefinitions="*,*">
-              <Button Grid.Column="0" Content="SAVE" Command="{Binding SaveProfileCommand}" />
-              <Button Grid.Column="1" Content="DELETE" Command="{Binding DeleteSelectedProfileCommand}" />
+            <Grid Grid.Row="3" ColumnDefinitions="*,*,*">
+              <Button Grid.Column="0" Content="ADD PROFILE" Command="{Binding SaveProfileCommand}" />
+              <Button Grid.Column="1" Content="SAVE" Command="{Binding SaveProfileCommand}" />
+              <Button Grid.Column="2" Content="DELETE" Command="{Binding DeleteSelectedProfileCommand}" />
             </Grid>
             <Grid Grid.Row="4" RowDefinitions="*,Auto">
               <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" Background="#66030A14" BorderBrush="#44FF1A1A">
