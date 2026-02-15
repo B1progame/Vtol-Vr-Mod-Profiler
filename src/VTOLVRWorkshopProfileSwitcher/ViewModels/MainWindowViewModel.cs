@@ -33,7 +33,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly AppPaths _appPaths = new();
     private readonly SteamLibraryDetector _detector = new();
     private readonly WorkshopScanner _scanner = new();
+    private readonly WorkshopDependencyResolverService _dependencyResolver = new();
+    private readonly CwbLoadItemsService _cwbLoadItemsService = new();
     private readonly ModRenameEngine _renameEngine = new();
+    private readonly LoadOnStartSyncService _loadOnStartSyncService = new();
     private readonly WorkshopWatcherService _watcher = new();
     private readonly ProfileService _profileService;
     private readonly BackupService _backupService;
@@ -644,14 +647,76 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             await _backupService.CreateSnapshotAsync(ActiveWorkshopPath);
 
+            var requestedEnabledSet = enabledSet
+                .Where(IsNumericWorkshopId)
+                .ToHashSet(StringComparer.Ordinal);
+            var dependencyResult = await _dependencyResolver.ResolveAsync(ActiveWorkshopPath, requestedEnabledSet);
+            var resolvedEnabledSet = dependencyResult.EnabledWorkshopIds.ToHashSet(StringComparer.Ordinal);
+
+            if (dependencyResult.AutoEnabledDependencyIds.Count > 0)
+            {
+                await _logger.LogAsync(
+                    $"Auto-enabled dependency ids: {string.Join(", ", dependencyResult.AutoEnabledDependencyIds)}");
+            }
+
+            if (dependencyResult.MissingDependencyIds.Count > 0)
+            {
+                await _logger.LogAsync(
+                    $"Dependency ids missing locally (could not auto-enable): {string.Join(", ", dependencyResult.MissingDependencyIds)}");
+            }
+
+            var cwbDiscovery = await _cwbLoadItemsService.DiscoverPacksAsync(ActiveWorkshopPath);
+            var enabledForFolderState = resolvedEnabledSet.ToHashSet(StringComparer.Ordinal);
+            foreach (var cwbPackId in cwbDiscovery.PackWorkshopIds)
+            {
+                enabledForFolderState.Add(cwbPackId);
+            }
+
             var current = await _scanner.ScanAsync(ActiveWorkshopPath);
+            foreach (var mod in current)
+            {
+                if (WorkshopScanner.TryGetWorkshopId(mod.FolderName, out _, out var enabledByFolderName))
+                {
+                    mod.IsEnabled = enabledByFolderName;
+                }
+            }
+
             var changes = await _renameEngine.ApplyEnabledSetAsync(
                 ActiveWorkshopPath,
                 current,
-                enabledSet,
+                enabledForFolderState,
                 (line, token) => _logger.LogAsync(line, token));
 
             await _logger.LogAsync($"Apply finished with {changes} rename operations");
+            var cwbSyncResult = await _cwbLoadItemsService.SyncAsync(
+                ActiveWorkshopPath,
+                cwbDiscovery,
+                resolvedEnabledSet);
+            if (cwbSyncResult.Success)
+            {
+                await _logger.LogAsync(cwbSyncResult.Message);
+            }
+            else
+            {
+                await _logger.LogAsync($"CWB loaditems sync skipped: {cwbSyncResult.Message}");
+            }
+
+            var applied = await _scanner.ScanAsync(ActiveWorkshopPath);
+            var enabledAfterApply = applied
+                .Where(mod => mod.IsEnabled)
+                .Select(mod => mod.WorkshopId)
+                .ToHashSet(StringComparer.Ordinal);
+
+            var syncResult = await _loadOnStartSyncService.SyncAsync(enabledAfterApply);
+            if (syncResult.Success)
+            {
+                await _logger.LogAsync($"{syncResult.Message} Enabled workshop ids: {enabledAfterApply.Count}");
+            }
+            else
+            {
+                await _logger.LogAsync($"Load On Start sync skipped: {syncResult.Message}");
+            }
+
             await RefreshModsAsync();
         }
         finally
@@ -870,6 +935,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         var version = assembly.GetName().Version ?? new Version(1, 0, 0, 0);
         return $"{version.Major}.{version.Minor}.{version.Build}";
+    }
+
+    private static bool IsNumericWorkshopId(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return value.All(char.IsDigit);
     }
 
     private async Task<(string TagName, string HtmlUrl, string InstallerUrl, string InstallerName)?> TryGetLatestReleaseAsync()

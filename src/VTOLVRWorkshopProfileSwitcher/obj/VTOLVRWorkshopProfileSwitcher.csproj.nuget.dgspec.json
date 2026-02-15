@@ -5,7 +5,7 @@
   },
   "projects": {
     "C:\\Users\\bslid.BENJI-PC\\OneDrive\\Dokumente\\Vtol-vr-mod-profile\\Vtol-Vr-Mod-Profiler\\src\\VTOLVRWorkshopProfileSwitcher\\VTOLVRWorkshopProfileSwitcher.csproj": {
-      "version": "1.0.4",
+      "version": "1.0.6",
       "restore": {
         "projectUniqueName": "C:\\Users\\bslid.BENJI-PC\\OneDrive\\Dokumente\\Vtol-vr-mod-profile\\Vtol-Vr-Mod-Profiler\\src\\VTOLVRWorkshopProfileSwitcher\\VTOLVRWorkshopProfileSwitcher.csproj",
         "projectName": "VTOLVRWorkshopProfileSwitcher",
@@ -66,12 +66,6 @@
               "target": "Package",
               "version": "[8.4.0, )"
             },
-            "Microsoft.NET.ILLink.Tasks": {
-              "suppressParent": "All",
-              "target": "Package",
-              "version": "[8.0.24, )",
-              "autoReferenced": true
-            },
             "System.Text.Json": {
               "target": "Package",
               "version": "[9.0.0, )"
@@ -88,31 +82,12 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "downloadDependencies": [
-            {
-              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
-              "version": "[8.0.24, 8.0.24]"
-            },
-            {
-              "name": "Microsoft.NETCore.App.Runtime.win-x64",
-              "version": "[8.0.24, 8.0.24]"
-            },
-            {
-              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
-              "version": "[8.0.24, 8.0.24]"
-            }
-          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
-        }
-      },
-      "runtimes": {
-        "win-x64": {
-          "#import": []
         }
       }
     }

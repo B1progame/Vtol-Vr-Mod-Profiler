@@ -17,6 +17,7 @@ public sealed class WorkshopScanner
     private const string DisabledPrefix = "_OFF_";
     private const string SteamWorkshopApi = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/";
     private static readonly HttpClient HttpClient = new();
+    private static readonly CwbLoadItemsService CwbLoadItemsService = new();
     private static readonly string ThumbnailCacheDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "VTOLVRWorkshopProfileSwitcher",
@@ -65,9 +66,51 @@ public sealed class WorkshopScanner
             }
         }
 
+        try
+        {
+            await ApplyCwbPackStatesAsync(workshopPath, result, cancellationToken);
+        }
+        catch
+        {
+            // Never fail full mod scanning due to optional CWB state projection.
+        }
+
         await EnrichMissingMetadataFromSteamAsync(result, cancellationToken);
 
         return result.OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static async Task ApplyCwbPackStatesAsync(
+        string workshopPath,
+        List<WorkshopMod> mods,
+        CancellationToken cancellationToken)
+    {
+        if (mods.Count == 0)
+        {
+            return;
+        }
+
+        var discovery = await CwbLoadItemsService.DiscoverPacksAsync(workshopPath, cancellationToken);
+        if (discovery.PackWorkshopIds.Count == 0)
+        {
+            return;
+        }
+
+        var cwbPackStates = await CwbLoadItemsService.GetPackEnabledStatesAsync(workshopPath, discovery, cancellationToken);
+        if (cwbPackStates.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var mod in mods)
+        {
+            if (!cwbPackStates.TryGetValue(mod.WorkshopId, out var shouldLoadPack))
+            {
+                continue;
+            }
+
+            mod.IsEnabled = mod.IsEnabled && shouldLoadPack;
+        }
     }
 
     public static bool TryGetWorkshopId(string folderName, out string workshopId, out bool isEnabled)
@@ -337,12 +380,16 @@ public sealed class WorkshopScanner
     {
         try
         {
-            // Most VTOL mods include a primary DLL in the root. That filename is usually the mod name.
-            var dllName = Directory.EnumerateFiles(modPath, "*.dll", SearchOption.TopDirectoryOnly)
+            // Most VTOL mods include a primary DLL in the root. Prefer non-dependency names.
+            var dllNames = Directory.EnumerateFiles(modPath, "*.dll", SearchOption.TopDirectoryOnly)
                 .Select(Path.GetFileNameWithoutExtension)
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Select(name => name!)
-                .FirstOrDefault();
+                .ToList();
+
+            var dllName = dllNames
+                .FirstOrDefault(name => !IsLikelyDependencyAssemblyName(name))
+                ?? dllNames.FirstOrDefault();
 
             if (!string.IsNullOrWhiteSpace(dllName))
             {
@@ -410,6 +457,11 @@ public sealed class WorkshopScanner
             return true;
         }
 
+        if (IsLikelyDependencyAssemblyName(value))
+        {
+            return true;
+        }
+
         return value.EndsWith(" main") ||
                value.StartsWith("mat ") ||
                value.StartsWith("texture ") ||
@@ -429,6 +481,45 @@ public sealed class WorkshopScanner
                name.EndsWith("_main") ||
                name.EndsWith(" main") ||
                name.StartsWith("texture");
+    }
+
+    private static bool IsLikelyDependencyAssemblyName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        var normalized = name.Trim()
+            .ToLowerInvariant()
+            .Replace(".", string.Empty)
+            .Replace(" ", string.Empty)
+            .Replace("_", string.Empty)
+            .Replace("-", string.Empty);
+
+        if (normalized.StartsWith("system") ||
+            normalized.StartsWith("microsoft") ||
+            normalized.StartsWith("unity") ||
+            normalized.StartsWith("valve") ||
+            normalized.StartsWith("steam"))
+        {
+            return true;
+        }
+
+        return normalized is
+            "asmresolver" or
+            "harmony" or
+            "harmonyx" or
+            "0harmony" or
+            "bepinex" or
+            "newtonsoftjson" or
+            "monocecil" or
+            "monomod" or
+            "netstandard" or
+            "mscorlib" or
+            "unhollowerbaselib" or
+            "unhollowerruntime" or
+            "dnlib";
     }
 
     private static async Task EnrichMissingMetadataFromSteamAsync(List<WorkshopMod> mods, CancellationToken cancellationToken)
