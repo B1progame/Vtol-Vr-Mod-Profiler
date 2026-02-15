@@ -13,11 +13,11 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("VTOLVR Workshop Tools")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Profile-based workshop mod folder switcher for VTOL VR.")]
-[assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.3.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.3+acd2af906e3f562b61c864e03175bbcb5b1e5666")]
+[assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.4.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.4+667024ea9e16ccfc96dd6269e3f7f9c414e5dd8d")]
 [assembly: System.Reflection.AssemblyProductAttribute("VTOL VR Workshop Profile Switcher")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VTOLVRWorkshopProfileSwitcher")]
-[assembly: System.Reflection.AssemblyVersionAttribute("1.0.3.0")]
+[assembly: System.Reflection.AssemblyVersionAttribute("1.0.4.0")]
 
 // Von der MSBuild WriteCodeFragment-Klasse generiert.
 

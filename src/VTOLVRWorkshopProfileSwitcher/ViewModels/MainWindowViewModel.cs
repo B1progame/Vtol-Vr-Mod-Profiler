@@ -499,6 +499,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         await DeleteModInternalAsync(mod, OpenSteamPageAfterDelete);
     }
 
+    public void OpenModWorkshopPage(ModItemViewModel? mod)
+    {
+        if (mod is null || string.IsNullOrWhiteSpace(mod.WorkshopId))
+        {
+            return;
+        }
+
+        OpenSteamWorkshopPage(mod.WorkshopId);
+    }
+
     [RelayCommand]
     private void SelectAllFiltered()
     {

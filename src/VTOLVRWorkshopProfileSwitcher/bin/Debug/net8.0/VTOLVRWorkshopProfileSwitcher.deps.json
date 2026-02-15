@@ -13,7 +13,6 @@
           "Avalonia.ReactiveUI": "11.2.5",
           "Avalonia.Themes.Fluent": "11.2.5",
           "CommunityToolkit.Mvvm": "8.4.0",
-          "Microsoft.NET.ILLink.Tasks": "8.0.24",
           "System.Text.Json": "9.0.0"
         },
         "runtime": {
@@ -307,7 +306,6 @@
           }
         }
       },
-      "Microsoft.NET.ILLink.Tasks/8.0.24": {},
       "ReactiveUI/20.1.1": {
         "dependencies": {
           "DynamicData": "8.4.1",
@@ -600,13 +598,6 @@
       "sha512": "sha512-MEnrZ3UIiH40hjzMDsxrTyi8dtqB5ziv3iBeeU4bXsL/7NLSal9F1lZKpK+tfBRnUoDSdtcW3KufE4yhATOMCA==",
       "path": "microcom.runtime/0.11.0",
       "hashPath": "microcom.runtime.0.11.0.nupkg.sha512"
-    },
-    "Microsoft.NET.ILLink.Tasks/8.0.24": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-1gnadp//+DoGJvV4AFdzPqYPxkypaWYjYMCr7KAacV0iadsHz1nU+rrkoxBCna4FCmeKH49CisEwa7g94/MbEg==",
-      "path": "microsoft.net.illink.tasks/8.0.24",
-      "hashPath": "microsoft.net.illink.tasks.8.0.24.nupkg.sha512"
     },
     "ReactiveUI/20.1.1": {
       "type": "package",

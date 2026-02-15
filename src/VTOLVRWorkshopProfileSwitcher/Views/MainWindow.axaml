@@ -391,7 +391,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:ModItemViewModel">
-                    <Border Classes="card-panel" Margin="6" Padding="10">
+                    <Border Classes="card-panel" Margin="6" Padding="10" Cursor="Hand" Tapped="OnModCardTapped">
                       <Grid RowDefinitions="126,Auto,Auto,Auto,Auto,Auto,Auto">
                         <Border Grid.Row="0" Background="#243043" CornerRadius="7" ClipToBounds="True">
                           <Image Source="{Binding ThumbnailImage}" Stretch="UniformToFill" />

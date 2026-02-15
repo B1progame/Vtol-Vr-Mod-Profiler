@@ -7,7 +7,7 @@
   "targets": {
     ".NETCoreApp,Version=v8.0": {},
     ".NETCoreApp,Version=v8.0/win-x64": {
-      "VTOLVRWorkshopProfileSwitcher/1.0.3": {
+      "VTOLVRWorkshopProfileSwitcher/1.0.4": {
         "dependencies": {
           "Avalonia": "11.2.5",
           "Avalonia.Desktop": "11.2.5",
@@ -1059,7 +1059,7 @@
     }
   },
   "libraries": {
-    "VTOLVRWorkshopProfileSwitcher/1.0.3": {
+    "VTOLVRWorkshopProfileSwitcher/1.0.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
