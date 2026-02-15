@@ -11,6 +11,8 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -98,6 +100,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool isCheckingForUpdates;
 
+    [ObservableProperty]
+    private bool isDownloadingUpdate;
+
+    [ObservableProperty]
+    private bool canAutoInstallUpdate;
+
+    [ObservableProperty]
+    private string latestInstallerUrl = string.Empty;
+
+    [ObservableProperty]
+    private string latestInstallerFileName = string.Empty;
+
     public IReadOnlyList<string> DesignOptions { get; } = new[] { "TACTICAL RED", "STEEL BLUE" };
     public string AppAuthor => "VTOLVR Workshop Tools";
     public string AppCreatedOn => "2026-02-15";
@@ -171,8 +185,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             if (latest is null)
             {
                 HasUpdateAvailable = false;
+                CanAutoInstallUpdate = false;
                 LatestReleaseVersion = "None";
                 LatestReleaseUrl = ReleasesPageUrl;
+                LatestInstallerUrl = string.Empty;
+                LatestInstallerFileName = string.Empty;
                 UpdateStatusText = "No GitHub releases published yet.";
                 return;
             }
@@ -180,20 +197,34 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             var latestTag = latest.Value.TagName;
             LatestReleaseVersion = string.IsNullOrWhiteSpace(latestTag) ? "Unknown" : latestTag;
             LatestReleaseUrl = string.IsNullOrWhiteSpace(latest.Value.HtmlUrl) ? ReleasesPageUrl : latest.Value.HtmlUrl;
+            LatestInstallerUrl = latest.Value.InstallerUrl;
+            LatestInstallerFileName = latest.Value.InstallerName;
             HasUpdateAvailable = IsUpdateAvailable(latestTag, CurrentAppVersion, CurrentVersionId);
+            CanAutoInstallUpdate = HasUpdateAvailable && !string.IsNullOrWhiteSpace(LatestInstallerUrl);
 
-            UpdateStatusText = HasUpdateAvailable
-                ? $"New version available: {LatestReleaseVersion} (current {CurrentVersionText})"
-                : $"You are up to date ({CurrentVersionText}, id {CurrentVersionIdText})";
+            if (!HasUpdateAvailable)
+            {
+                UpdateStatusText = $"You are up to date ({CurrentVersionText}, id {CurrentVersionIdText})";
+            }
+            else if (!CanAutoInstallUpdate)
+            {
+                UpdateStatusText = $"Update found ({LatestReleaseVersion}), but no installer asset (.exe) is attached.";
+            }
+            else
+            {
+                UpdateStatusText = $"New version available: {LatestReleaseVersion} (current {CurrentVersionText})";
+            }
         }
         catch (HttpRequestException ex) when (ex.StatusCode.HasValue)
         {
             HasUpdateAvailable = false;
+            CanAutoInstallUpdate = false;
             UpdateStatusText = $"Update check failed ({(int)ex.StatusCode.Value})";
         }
         catch
         {
             HasUpdateAvailable = false;
+            CanAutoInstallUpdate = false;
             UpdateStatusText = "Update check failed";
         }
         finally
@@ -203,20 +234,59 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void OpenLatestRelease()
+    private async Task DownloadAndInstallUpdateAsync()
     {
-        var target = string.IsNullOrWhiteSpace(LatestReleaseUrl) ? ReleasesPageUrl : LatestReleaseUrl;
+        if (IsDownloadingUpdate)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(LatestInstallerUrl))
+        {
+            UpdateStatusText = "Installer asset not found in latest release.";
+            return;
+        }
+
+        IsDownloadingUpdate = true;
         try
         {
+            var fileName = string.IsNullOrWhiteSpace(LatestInstallerFileName)
+                ? $"{GitHubRepoName}-Setup.exe"
+                : LatestInstallerFileName;
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "VTOLVRWorkshopProfileSwitcher", "updates");
+            Directory.CreateDirectory(tempDir);
+            var installerPath = Path.Combine(tempDir, fileName);
+
+            UpdateStatusText = $"Downloading {fileName}...";
+            using (var response = await GitHubHttpClient.GetAsync(LatestInstallerUrl, HttpCompletionOption.ResponseHeadersRead))
+            {
+                response.EnsureSuccessStatusCode();
+                await using var source = await response.Content.ReadAsStreamAsync();
+                await using var target = File.Create(installerPath);
+                await source.CopyToAsync(target);
+            }
+
+            UpdateStatusText = "Download complete. Starting installer...";
             Process.Start(new ProcessStartInfo
             {
-                FileName = target,
-                UseShellExecute = true
+                FileName = installerPath,
+                UseShellExecute = true,
+                Verb = "runas"
             });
+
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown();
+            }
         }
         catch
         {
-            // Ignore launch failures.
+            UpdateStatusText = "Auto-install failed. Please try again.";
+        }
+        finally
+        {
+            IsDownloadingUpdate = false;
         }
     }
 
@@ -772,7 +842,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         return $"{version.Major}.{version.Minor}.{version.Build}";
     }
 
-    private async Task<(string TagName, string HtmlUrl)?> TryGetLatestReleaseAsync()
+    private async Task<(string TagName, string HtmlUrl, string InstallerUrl, string InstallerName)?> TryGetLatestReleaseAsync()
     {
         var latestUrl = $"https://api.github.com/repos/{GitHubOwner}/{GitHubRepoName}/releases/latest";
         using var latestResponse = await GitHubHttpClient.GetAsync(latestUrl);
@@ -811,17 +881,53 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var first = root[0];
         var tag = first.TryGetProperty("tag_name", out var tagEl) ? tagEl.GetString() : null;
         var html = first.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null;
-        return (tag ?? string.Empty, html ?? ReleasesPageUrl);
+        var (installerUrl, installerName) = ReadInstallerAsset(first);
+        return (tag ?? string.Empty, html ?? ReleasesPageUrl, installerUrl, installerName);
     }
 
-    private static async Task<(string TagName, string HtmlUrl)> ReadReleaseAsync(HttpResponseMessage response)
+    private static async Task<(string TagName, string HtmlUrl, string InstallerUrl, string InstallerName)> ReadReleaseAsync(HttpResponseMessage response)
     {
         await using var stream = await response.Content.ReadAsStreamAsync();
         using var doc = await JsonDocument.ParseAsync(stream);
         var root = doc.RootElement;
         var tag = root.TryGetProperty("tag_name", out var tagEl) ? tagEl.GetString() : null;
         var html = root.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null;
-        return (tag ?? string.Empty, html ?? ReleasesPageUrl);
+        var (installerUrl, installerName) = ReadInstallerAsset(root);
+        return (tag ?? string.Empty, html ?? ReleasesPageUrl, installerUrl, installerName);
+    }
+
+    private static (string InstallerUrl, string InstallerName) ReadInstallerAsset(JsonElement releaseRoot)
+    {
+        if (!releaseRoot.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array)
+        {
+            return (string.Empty, string.Empty);
+        }
+
+        var candidates = assets
+            .EnumerateArray()
+            .Select(asset =>
+            {
+                var name = asset.TryGetProperty("name", out var nameEl) ? nameEl.GetString() ?? string.Empty : string.Empty;
+                var url = asset.TryGetProperty("browser_download_url", out var urlEl) ? urlEl.GetString() ?? string.Empty : string.Empty;
+                return (Name: name, Url: url);
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Name) &&
+                        !string.IsNullOrWhiteSpace(x.Url) &&
+                        x.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            return (string.Empty, string.Empty);
+        }
+
+        var preferred = candidates.FirstOrDefault(x => x.Name.Contains("setup", StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(preferred.Url))
+        {
+            preferred = candidates[0];
+        }
+
+        return (preferred.Url, preferred.Name);
     }
 }
 

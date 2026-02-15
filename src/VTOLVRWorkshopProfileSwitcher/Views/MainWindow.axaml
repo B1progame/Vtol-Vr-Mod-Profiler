@@ -394,8 +394,8 @@
             <TextBlock Text="{Binding UpdateStatusText}" Foreground="#A8B7CA" TextWrapping="Wrap" />
             <Button Content="CHECK FOR UPDATE" Command="{Binding CheckForUpdatesCommand}" />
             <Button Classes="rainbow-update"
-                    IsVisible="{Binding HasUpdateAvailable}"
-                    Command="{Binding OpenLatestReleaseCommand}">
+                    IsVisible="{Binding CanAutoInstallUpdate}"
+                    Command="{Binding DownloadAndInstallUpdateCommand}">
               <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                 <Path Data="M7,1 L7,9 M3,6 L7,10 L11,6 M2,12 L12,12"
                       Stroke="#FFFFFFFF"
@@ -403,7 +403,7 @@
                       Stretch="Uniform"
                       Width="14"
                       Height="14" />
-                <TextBlock Text="DOWNLOAD NEW VERSION" />
+                <TextBlock Text="AUTO INSTALL UPDATE" />
               </StackPanel>
             </Button>
           </StackPanel>
