@@ -45,7 +45,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private readonly ObservableCollection<ModItemViewModel> _allMods = new();
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private readonly SemaphoreSlim _liveDependencyLock = new(1, 1);
     private bool _suppressSettingsSave;
+    private bool _isProjectingDependencyStates;
+    private CancellationTokenSource? _dependencyPreviewCts;
 
     [ObservableProperty]
     private ObservableCollection<ModItemViewModel> filteredMods = new();
@@ -142,7 +145,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public override void Dispose()
     {
+        _dependencyPreviewCts?.Cancel();
+        _dependencyPreviewCts?.Dispose();
         _watcher.Dispose();
+        _liveDependencyLock.Dispose();
         _refreshLock.Dispose();
     }
 
@@ -647,9 +653,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             await _backupService.CreateSnapshotAsync(ActiveWorkshopPath);
 
-            var requestedEnabledSet = enabledSet
-                .Where(IsNumericWorkshopId)
-                .ToHashSet(StringComparer.Ordinal);
+            var requestedEnabledSet = await BuildRequestedEnabledSetWithCwbInferenceAsync(enabledSet);
             var dependencyResult = await _dependencyResolver.ResolveAsync(ActiveWorkshopPath, requestedEnabledSet);
             var resolvedEnabledSet = dependencyResult.EnabledWorkshopIds.ToHashSet(StringComparer.Ordinal);
 
@@ -742,10 +746,128 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     if (args.PropertyName == nameof(ModItemViewModel.IsEnabled))
                     {
                         StatusMessage = "Pending changes";
+                        if (!_isProjectingDependencyStates)
+                        {
+                            QueueLiveDependencyProjection();
+                        }
                     }
                 };
             }
         }
+    }
+
+    private void QueueLiveDependencyProjection()
+    {
+        if (string.IsNullOrWhiteSpace(ActiveWorkshopPath) || ActiveWorkshopPath == "Not detected")
+        {
+            return;
+        }
+
+        _dependencyPreviewCts?.Cancel();
+        _dependencyPreviewCts?.Dispose();
+        _dependencyPreviewCts = new CancellationTokenSource();
+        _ = ProjectDependenciesLiveAsync(_dependencyPreviewCts.Token);
+    }
+
+    private async Task ProjectDependenciesLiveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(220, cancellationToken);
+            await _liveDependencyLock.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        try
+        {
+            var requestedEnabledSet = await Dispatcher.UIThread.InvokeAsync(() =>
+                _allMods
+                    .Where(m => m.IsEnabled && IsNumericWorkshopId(m.WorkshopId))
+                    .Select(m => m.WorkshopId)
+                    .ToHashSet(StringComparer.Ordinal));
+            requestedEnabledSet = await BuildRequestedEnabledSetWithCwbInferenceAsync(requestedEnabledSet, cancellationToken);
+
+            var dependencyResult = await _dependencyResolver.ResolveAsync(
+                ActiveWorkshopPath,
+                requestedEnabledSet,
+                cancellationToken);
+
+            var resolvedEnabledSet = dependencyResult.EnabledWorkshopIds.ToHashSet(StringComparer.Ordinal);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var changedCount = 0;
+                _isProjectingDependencyStates = true;
+                try
+                {
+                    foreach (var mod in _allMods)
+                    {
+                        var shouldBeEnabled = resolvedEnabledSet.Contains(mod.WorkshopId);
+                        if (mod.IsEnabled != shouldBeEnabled)
+                        {
+                            mod.IsEnabled = shouldBeEnabled;
+                            changedCount++;
+                        }
+                    }
+                }
+                finally
+                {
+                    _isProjectingDependencyStates = false;
+                }
+
+                if (changedCount > 0)
+                {
+                    StatusMessage = $"Pending changes ({changedCount} dependency toggle updates)";
+                }
+                else if (dependencyResult.MissingDependencyIds.Count > 0)
+                {
+                    StatusMessage = $"Pending changes (missing dependencies: {dependencyResult.MissingDependencyIds.Count})";
+                }
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                StatusMessage = "Pending changes (live dependency check failed)";
+            });
+        }
+        finally
+        {
+            _liveDependencyLock.Release();
+        }
+    }
+
+    private async Task<HashSet<string>> BuildRequestedEnabledSetWithCwbInferenceAsync(
+        IEnumerable<string> enabledIds,
+        CancellationToken cancellationToken = default)
+    {
+        var requestedEnabledSet = enabledIds
+            .Where(IsNumericWorkshopId)
+            .ToHashSet(StringComparer.Ordinal);
+
+        if (string.IsNullOrWhiteSpace(ActiveWorkshopPath) || ActiveWorkshopPath == "Not detected")
+        {
+            return requestedEnabledSet;
+        }
+
+        var cwbDiscovery = await _cwbLoadItemsService.DiscoverPacksAsync(ActiveWorkshopPath, cancellationToken);
+        if (cwbDiscovery.PackWorkshopIds.Count == 0)
+        {
+            return requestedEnabledSet;
+        }
+
+        if (requestedEnabledSet.Overlaps(cwbDiscovery.PackWorkshopIds))
+        {
+            requestedEnabledSet.Add(CwbLoadItemsService.CustomWeaponsBaseWorkshopId);
+        }
+
+        return requestedEnabledSet;
     }
 
     private void ApplyFilter()
