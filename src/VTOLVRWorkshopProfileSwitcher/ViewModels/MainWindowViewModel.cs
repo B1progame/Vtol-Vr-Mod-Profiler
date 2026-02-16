@@ -12,7 +12,9 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -39,6 +41,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly LoadOnStartSyncService _loadOnStartSyncService = new();
     private readonly WorkshopWatcherService _watcher = new();
     private readonly ProfileService _profileService;
+    private readonly ProfilePackageService _profilePackageService;
     private readonly BackupService _backupService;
     private readonly AppSettingsService _settingsService;
     private readonly AppLogger _logger;
@@ -46,9 +49,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly ObservableCollection<ModItemViewModel> _allMods = new();
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private readonly SemaphoreSlim _liveDependencyLock = new(1, 1);
+    private readonly SemaphoreSlim _autoCleanupLock = new(1, 1);
     private bool _suppressSettingsSave;
     private bool _isProjectingDependencyStates;
     private CancellationTokenSource? _dependencyPreviewCts;
+    private HashSet<string>? _lastRequestedEnabledSet;
+    private List<string> _lastRequiredOrderedIds = new();
+    private string _lastApplyContext = string.Empty;
+    private DateTime _lastAutoCleanupUtc = DateTime.MinValue;
 
     [ObservableProperty]
     private ObservableCollection<ModItemViewModel> filteredMods = new();
@@ -122,8 +130,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string latestInstallerFileName = string.Empty;
 
+    [ObservableProperty]
+    private string selectedImportConflictPolicy = "Rename";
+
+    [ObservableProperty]
+    private ObservableCollection<string> missingWorkshopIds = new();
+
+    [ObservableProperty]
+    private string missingModsContext = string.Empty;
+
+    [ObservableProperty]
+    private int nextMissingModIndex;
 
     public IReadOnlyList<string> DesignOptions { get; } = new[] { "TACTICAL RED", "STEEL BLUE" };
+    public IReadOnlyList<string> ImportConflictPolicyOptions { get; } = new[] { "Rename", "Overwrite", "Skip" };
+    public int MissingModsCount => MissingWorkshopIds.Count;
+    public bool HasMissingMods => MissingModsCount > 0;
+    public bool CanApplyAgain => _lastRequestedEnabledSet is not null && _lastRequestedEnabledSet.Count > 0;
     public string AppAuthor => "B1progame";
     public string AppCreatedOn => "2026-02-15";
     public string CurrentVersionText => $"v{CurrentAppVersion.Major}.{CurrentAppVersion.Minor}.{CurrentAppVersion.Build}";
@@ -132,6 +155,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         _profileService = new ProfileService(_appPaths);
+        _profilePackageService = new ProfilePackageService();
         _backupService = new BackupService(_appPaths);
         _settingsService = new AppSettingsService(_appPaths);
         _logger = new AppLogger(_appPaths);
@@ -148,6 +172,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _dependencyPreviewCts?.Cancel();
         _dependencyPreviewCts?.Dispose();
         _watcher.Dispose();
+        _autoCleanupLock.Dispose();
         _liveDependencyLock.Dispose();
         _refreshLock.Dispose();
     }
@@ -181,6 +206,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     partial void OnAutoInstallUpdatesChanged(bool value)
     {
         SaveSettingsIfNeeded();
+    }
+
+    partial void OnMissingWorkshopIdsChanged(ObservableCollection<string> value)
+    {
+        OnPropertyChanged(nameof(MissingModsCount));
+        OnPropertyChanged(nameof(HasMissingMods));
     }
 
     [RelayCommand]
@@ -342,7 +373,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 .First();
 
             ActiveWorkshopPath = selectedPath.Path;
-            SteamStatusPath = $"Auto-detected via Steam libraryfolders.vdf ({selectedPath.Count} folders)";
+            var scannedBeforeCleanup = await _scanner.ScanAsync(ActiveWorkshopPath);
+            var startupCleanup = await _renameEngine.CleanupDuplicateFoldersAsync(
+                ActiveWorkshopPath,
+                scannedBeforeCleanup,
+                (line, token) => _logger.LogAsync(line, token));
+
+            if (startupCleanup.GroupsWithDuplicates > 0)
+            {
+                await _logger.LogAsync(
+                    $"Startup duplicate cleanup: groups={startupCleanup.GroupsWithDuplicates}, removed={startupCleanup.RemovedFolders}, renamed={startupCleanup.RenamedFolders}, failed={startupCleanup.FailedOperations}");
+            }
+
+            SteamStatusPath = $"Auto-detected via Steam libraryfolders.vdf ({CountWorkshopFolders(ActiveWorkshopPath)} folders)";
             await RefreshModsAsync();
             _watcher.Start(ActiveWorkshopPath);
         }
@@ -363,7 +406,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         ActiveWorkshopPath = manualPath;
-        SteamStatusPath = "Manual override active";
+        SteamStatusPath = $"Manual override active ({CountWorkshopFolders(ActiveWorkshopPath)} folders)";
         _watcher.Start(ActiveWorkshopPath);
         await RefreshModsAsync();
     }
@@ -395,6 +438,79 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         finally
         {
             _refreshLock.Release();
+        }
+    }
+
+    [RelayCommand]
+    private async Task CleanDuplicateModsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ActiveWorkshopPath) || ActiveWorkshopPath == "Not detected")
+        {
+            StatusMessage = "Workshop path not set";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var current = await _scanner.ScanAsync(ActiveWorkshopPath);
+            var cleanup = await _renameEngine.CleanupDuplicateFoldersAsync(
+                ActiveWorkshopPath,
+                current,
+                (line, token) => _logger.LogAsync(line, token));
+
+            await RefreshModsAsync();
+            RefreshWorkshopFolderCountInStatus();
+
+            if (cleanup.GroupsWithDuplicates == 0)
+            {
+                StatusMessage = "No duplicate mod folders found";
+                return;
+            }
+
+            StatusMessage =
+                $"Cleaned {cleanup.GroupsWithDuplicates} mod IDs (removed {cleanup.RemovedFolders}, renamed {cleanup.RenamedFolders}, failed {cleanup.FailedOperations})";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void RefreshWorkshopFolderCountInStatus()
+    {
+        if (string.IsNullOrWhiteSpace(ActiveWorkshopPath) || ActiveWorkshopPath == "Not detected")
+        {
+            return;
+        }
+
+        var count = CountWorkshopFolders(ActiveWorkshopPath);
+        if (SteamStatusPath.StartsWith("Auto-detected via Steam libraryfolders.vdf", StringComparison.OrdinalIgnoreCase))
+        {
+            SteamStatusPath = $"Auto-detected via Steam libraryfolders.vdf ({count} folders)";
+            return;
+        }
+
+        if (SteamStatusPath.StartsWith("Manual override active", StringComparison.OrdinalIgnoreCase))
+        {
+            SteamStatusPath = $"Manual override active ({count} folders)";
+        }
+    }
+
+    private static int CountWorkshopFolders(string workshopPath)
+    {
+        if (string.IsNullOrWhiteSpace(workshopPath) || !Directory.Exists(workshopPath))
+        {
+            return 0;
+        }
+
+        try
+        {
+            return Directory.EnumerateDirectories(workshopPath).Count();
+        }
+        catch
+        {
+            return 0;
         }
     }
 
@@ -446,6 +562,113 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task ExportSelectedProfilePackageAsync()
+    {
+        if (SelectedProfile is null)
+        {
+            StatusMessage = "No profile selected to export";
+            return;
+        }
+
+        var saveFile = await PickSavePackageFileAsync($"{MakeSafeFileName(SelectedProfile.Name)}-profile-package.json");
+        if (saveFile is null)
+        {
+            return;
+        }
+
+        await using var stream = await saveFile.OpenWriteAsync();
+        await _profilePackageService.ExportAsync(
+            stream,
+            SelectedProfile.Name,
+            new[] { SelectedProfile.Source });
+
+        await _logger.LogAsync($"Exported profile package '{saveFile.Name}' with 1 profile ('{SelectedProfile.Name}')");
+        StatusMessage = $"Exported profile package '{saveFile.Name}'";
+    }
+
+    [RelayCommand]
+    private async Task ExportAllProfilesPackageAsync()
+    {
+        var allProfiles = await _profileService.LoadProfilesAsync();
+        if (allProfiles.Count == 0)
+        {
+            StatusMessage = "No profiles available to export";
+            return;
+        }
+
+        var saveFile = await PickSavePackageFileAsync("all-profiles-package.json");
+        if (saveFile is null)
+        {
+            return;
+        }
+
+        await using var stream = await saveFile.OpenWriteAsync();
+        await _profilePackageService.ExportAsync(
+            stream,
+            "All Profiles",
+            allProfiles);
+
+        await _logger.LogAsync($"Exported profile package '{saveFile.Name}' with {allProfiles.Count} profiles");
+        StatusMessage = $"Exported {allProfiles.Count} profiles to '{saveFile.Name}'";
+    }
+
+    [RelayCommand]
+    private async Task ImportProfilePackageAsync()
+    {
+        var openFile = await PickPackageImportFileAsync();
+        if (openFile is null)
+        {
+            return;
+        }
+
+        var existingProfiles = await _profileService.LoadProfilesAsync();
+        await using var stream = await openFile.OpenReadAsync();
+
+        ProfilePackageImportResult importResult;
+        try
+        {
+            importResult = await _profilePackageService.ImportAsync(
+                stream,
+                existingProfiles,
+                ParseConflictPolicy(SelectedImportConflictPolicy));
+        }
+        catch (Exception ex) when (ex is InvalidDataException or JsonException)
+        {
+            StatusMessage = $"Import failed: {ex.Message}";
+            await _logger.LogAsync($"Import failed for '{openFile.Name}': {ex.Message}");
+            return;
+        }
+
+        foreach (var profile in importResult.ImportedProfiles)
+        {
+            await _profileService.SaveProfileAsync(profile);
+        }
+
+        await LoadProfilesAsync();
+
+        var importedOrderedIds = importResult.ImportedProfiles
+            .SelectMany(profile => profile.EnabledMods)
+            .Where(IsNumericWorkshopId)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (importedOrderedIds.Count > 0 &&
+            !string.IsNullOrWhiteSpace(ActiveWorkshopPath) &&
+            ActiveWorkshopPath != "Not detected")
+        {
+            var installedIds = await GetInstalledWorkshopIdsAsync();
+            var missingAfterImport = BuildMissingWorkshopIdList(importedOrderedIds, installedIds);
+            await SetMissingModsAsync(missingAfterImport, "imported profiles");
+        }
+
+        await _logger.LogAsync(
+            $"Import package '{openFile.Name}' result: imported={importResult.ImportedCount}, renamed={importResult.RenamedCount}, overwritten={importResult.OverwrittenCount}, skipped={importResult.SkippedCount}, invalidProfiles={importResult.InvalidProfileCount}, removedInvalidWorkshopIds={importResult.RemovedInvalidWorkshopIdsCount}");
+
+        StatusMessage =
+            $"Import finished: imported {importResult.ImportedCount}, renamed {importResult.RenamedCount}, overwritten {importResult.OverwrittenCount}, skipped {importResult.SkippedCount}";
+    }
+
+    [RelayCommand]
     private async Task DeleteSelectedProfileAsync()
     {
         if (SelectedProfile is null)
@@ -469,15 +692,31 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        await ApplyEnabledSetAsync(SelectedProfile.EnabledMods.ToHashSet(StringComparer.Ordinal));
+        var requiredOrderedIds = SelectedProfile.EnabledMods
+            .Where(IsNumericWorkshopId)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        await ApplyEnabledSetAsync(
+            requiredOrderedIds.ToHashSet(StringComparer.Ordinal),
+            requiredOrderedIds,
+            $"profile '{SelectedProfile.Name}'");
         StatusMessage = $"Applied profile '{SelectedProfile.Name}'";
     }
 
     [RelayCommand]
     private async Task ApplyCurrentTogglesAsync()
     {
-        var enabledSet = _allMods.Where(m => m.IsEnabled).Select(m => m.WorkshopId).ToHashSet(StringComparer.Ordinal);
-        await ApplyEnabledSetAsync(enabledSet);
+        var requiredOrderedIds = _allMods
+            .Where(m => m.IsEnabled && IsNumericWorkshopId(m.WorkshopId))
+            .Select(m => m.WorkshopId)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        await ApplyEnabledSetAsync(
+            requiredOrderedIds.ToHashSet(StringComparer.Ordinal),
+            requiredOrderedIds,
+            "current toggles");
         StatusMessage = "Applied current toggle state";
     }
 
@@ -498,8 +737,87 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             .Select(tuple => tuple.id)
             .ToHashSet(StringComparer.Ordinal);
 
-        await ApplyEnabledSetAsync(enabledSet);
+        await ApplyEnabledSetAsync(enabledSet, enabledSet.OrderBy(id => id, StringComparer.Ordinal).ToList(), "restored snapshot");
         StatusMessage = "Last snapshot restored";
+    }
+
+    [RelayCommand]
+    private async Task OpenNextMissingModAsync()
+    {
+        if (MissingWorkshopIds.Count == 0)
+        {
+            StatusMessage = "No missing workshop IDs";
+            return;
+        }
+
+        if (NextMissingModIndex >= MissingWorkshopIds.Count)
+        {
+            NextMissingModIndex = 0;
+        }
+
+        var workshopId = MissingWorkshopIds[NextMissingModIndex];
+        var opened = OpenSteamWorkshopPage(workshopId);
+        var currentIndex = NextMissingModIndex + 1;
+        NextMissingModIndex++;
+
+        await _logger.LogAsync($"Opened missing mod id {workshopId} ({currentIndex}/{MissingWorkshopIds.Count})");
+        StatusMessage = opened
+            ? $"Opened missing mod {workshopId} ({currentIndex}/{MissingWorkshopIds.Count})"
+            : $"Failed to open missing mod {workshopId}";
+    }
+
+    [RelayCommand]
+    private async Task CopyAllMissingIdsAsync()
+    {
+        if (MissingWorkshopIds.Count == 0)
+        {
+            StatusMessage = "No missing workshop IDs to copy";
+            return;
+        }
+
+        var topLevel = GetMainWindow();
+        if (topLevel?.Clipboard is null)
+        {
+            StatusMessage = "Clipboard is not available";
+            return;
+        }
+
+        var text = string.Join(Environment.NewLine, MissingWorkshopIds);
+        await topLevel.Clipboard.SetTextAsync(text);
+        StatusMessage = $"Copied {MissingWorkshopIds.Count} missing IDs";
+    }
+
+    [RelayCommand]
+    private async Task RescanMissingModsAsync()
+    {
+        await RefreshModsAsync();
+
+        if (_lastRequiredOrderedIds.Count == 0)
+        {
+            StatusMessage = "Rescan complete (no active missing-mod context)";
+            return;
+        }
+
+        var installedIds = await GetInstalledWorkshopIdsAsync();
+        var remainingMissingIds = BuildMissingWorkshopIdList(_lastRequiredOrderedIds, installedIds);
+        await SetMissingModsAsync(remainingMissingIds, _lastApplyContext);
+        await _logger.LogAsync($"Rescan complete. Remaining missing IDs: {string.Join(", ", remainingMissingIds)}");
+        StatusMessage = remainingMissingIds.Count == 0
+            ? "All required mods are now installed"
+            : $"{remainingMissingIds.Count} required mods still missing";
+    }
+
+    [RelayCommand]
+    private async Task ApplyAgainAsync()
+    {
+        if (_lastRequestedEnabledSet is null || _lastRequestedEnabledSet.Count == 0)
+        {
+            StatusMessage = "No previous apply context available";
+            return;
+        }
+
+        await ApplyEnabledSetAsync(_lastRequestedEnabledSet, _lastRequiredOrderedIds, _lastApplyContext);
+        StatusMessage = "Apply retried";
     }
 
     [RelayCommand]
@@ -640,7 +958,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private async Task ApplyEnabledSetAsync(IReadOnlySet<string> enabledSet)
+    private async Task ApplyEnabledSetAsync(
+        IReadOnlySet<string> enabledSet,
+        IReadOnlyList<string>? requiredOrderedIds = null,
+        string applyContext = "apply")
     {
         if (string.IsNullOrWhiteSpace(ActiveWorkshopPath) || ActiveWorkshopPath == "Not detected")
         {
@@ -648,12 +969,29 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        var normalizedEnabledSet = enabledSet
+            .Where(IsNumericWorkshopId)
+            .ToHashSet(StringComparer.Ordinal);
+        var requiredIds = requiredOrderedIds?
+            .Where(IsNumericWorkshopId)
+            .Distinct(StringComparer.Ordinal)
+            .ToList() ?? normalizedEnabledSet.OrderBy(id => id, StringComparer.Ordinal).ToList();
+
+        _lastRequestedEnabledSet = normalizedEnabledSet;
+        _lastRequiredOrderedIds = requiredIds;
+        _lastApplyContext = applyContext;
+        OnPropertyChanged(nameof(CanApplyAgain));
+
+        var installedIds = await GetInstalledWorkshopIdsAsync();
+        var missingIdsBeforeApply = BuildMissingWorkshopIdList(requiredIds, installedIds);
+        await SetMissingModsAsync(missingIdsBeforeApply, applyContext);
+
         IsBusy = true;
         try
         {
             await _backupService.CreateSnapshotAsync(ActiveWorkshopPath);
 
-            var requestedEnabledSet = await BuildRequestedEnabledSetWithCwbInferenceAsync(enabledSet);
+            var requestedEnabledSet = await BuildRequestedEnabledSetWithCwbInferenceAsync(normalizedEnabledSet);
             var dependencyResult = await _dependencyResolver.ResolveAsync(ActiveWorkshopPath, requestedEnabledSet);
             var resolvedEnabledSet = dependencyResult.EnabledWorkshopIds.ToHashSet(StringComparer.Ordinal);
 
@@ -721,6 +1059,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 await _logger.LogAsync($"Load On Start sync skipped: {syncResult.Message}");
             }
 
+            var missingAfterApply = BuildMissingWorkshopIdList(requiredIds, enabledAfterApply);
+            await SetMissingModsAsync(missingAfterApply, applyContext);
+            await _logger.LogAsync(
+                $"Apply result ({applyContext}): requested={requiredIds.Count}, enabledAfterApply={enabledAfterApply.Count}, missingAfterApply={missingAfterApply.Count}");
+
             await RefreshModsAsync();
         }
         finally
@@ -731,8 +1074,45 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private Task OnWorkshopChangedAsync()
     {
-        Dispatcher.UIThread.Post(() => _ = RefreshModsAsync());
+        Dispatcher.UIThread.Post(() => _ = HandleWorkshopChangedAsync());
         return Task.CompletedTask;
+    }
+
+    private async Task HandleWorkshopChangedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ActiveWorkshopPath) || ActiveWorkshopPath == "Not detected")
+        {
+            return;
+        }
+
+        var cooldownElapsed = DateTime.UtcNow - _lastAutoCleanupUtc > TimeSpan.FromSeconds(2);
+        if (cooldownElapsed && await _autoCleanupLock.WaitAsync(0))
+        {
+            try
+            {
+                var current = await _scanner.ScanAsync(ActiveWorkshopPath);
+                var cleanup = await _renameEngine.CleanupDuplicateFoldersAsync(
+                    ActiveWorkshopPath,
+                    current,
+                    (line, token) => _logger.LogAsync(line, token));
+
+                if (cleanup.GroupsWithDuplicates > 0)
+                {
+                    _lastAutoCleanupUtc = DateTime.UtcNow;
+                    await _logger.LogAsync(
+                        $"Auto duplicate cleanup after workshop change: groups={cleanup.GroupsWithDuplicates}, removed={cleanup.RemovedFolders}, renamed={cleanup.RenamedFolders}, failed={cleanup.FailedOperations}");
+                    StatusMessage =
+                        $"Auto-cleaned dupes: groups {cleanup.GroupsWithDuplicates}, removed {cleanup.RemovedFolders}, renamed {cleanup.RenamedFolders}, failed {cleanup.FailedOperations}";
+                }
+            }
+            finally
+            {
+                _autoCleanupLock.Release();
+            }
+        }
+
+        await RefreshModsAsync();
+        RefreshWorkshopFolderCountInStatus();
     }
 
     private void OnModsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -870,6 +1250,127 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         return requestedEnabledSet;
     }
 
+    private static ProfileImportConflictPolicy ParseConflictPolicy(string? value)
+    {
+        if (string.Equals(value, "Overwrite", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProfileImportConflictPolicy.Overwrite;
+        }
+
+        if (string.Equals(value, "Skip", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProfileImportConflictPolicy.Skip;
+        }
+
+        return ProfileImportConflictPolicy.Rename;
+    }
+
+    private static List<string> BuildMissingWorkshopIdList(
+        IEnumerable<string> requiredOrderedIds,
+        IReadOnlySet<string> installedIds)
+    {
+        var missing = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var workshopId in requiredOrderedIds)
+        {
+            if (!IsNumericWorkshopId(workshopId) || !seen.Add(workshopId))
+            {
+                continue;
+            }
+
+            if (!installedIds.Contains(workshopId))
+            {
+                missing.Add(workshopId);
+            }
+        }
+
+        return missing;
+    }
+
+    private async Task<HashSet<string>> GetInstalledWorkshopIdsAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(ActiveWorkshopPath) || ActiveWorkshopPath == "Not detected")
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        var scanned = await _scanner.ScanAsync(ActiveWorkshopPath, cancellationToken);
+        return scanned
+            .Select(mod => mod.WorkshopId)
+            .Where(IsNumericWorkshopId)
+            .ToHashSet(StringComparer.Ordinal);
+    }
+
+    private Task SetMissingModsAsync(IReadOnlyList<string> missingIds, string context)
+    {
+        MissingWorkshopIds = new ObservableCollection<string>(missingIds);
+        MissingModsContext = context;
+        NextMissingModIndex = 0;
+        return Task.CompletedTask;
+    }
+
+    private static string MakeSafeFileName(string value)
+    {
+        var invalidChars = Path.GetInvalidFileNameChars();
+        var safe = new string(value.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray()).Trim();
+        return string.IsNullOrWhiteSpace(safe) ? "profiles" : safe;
+    }
+
+    private Window? GetMainWindow()
+    {
+        return (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+    }
+
+    private async Task<IStorageFile?> PickPackageImportFileAsync()
+    {
+        var window = GetMainWindow();
+        if (window is null)
+        {
+            StatusMessage = "File picker is unavailable";
+            return null;
+        }
+
+        var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import Profile Package",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("JSON files")
+                {
+                    Patterns = new[] { "*.json" }
+                }
+            }
+        });
+
+        return files.Count == 0 ? null : files[0];
+    }
+
+    private async Task<IStorageFile?> PickSavePackageFileAsync(string suggestedFileName)
+    {
+        var window = GetMainWindow();
+        if (window is null)
+        {
+            StatusMessage = "File picker is unavailable";
+            return null;
+        }
+
+        return await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Export Profile Package",
+            SuggestedFileName = suggestedFileName,
+            DefaultExtension = "json",
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("JSON files")
+                {
+                    Patterns = new[] { "*.json" }
+                }
+            }
+        });
+    }
+
     private void ApplyFilter()
     {
         var query = SearchQuery?.Trim() ?? string.Empty;
@@ -908,7 +1409,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         return false;
     }
 
-    private static void OpenSteamWorkshopPage(string workshopId)
+    private static bool OpenSteamWorkshopPage(string workshopId)
     {
         var steamUrl = $"steam://url/CommunityFilePage/{workshopId}";
         var webUrl = $"https://steamcommunity.com/sharedfiles/filedetails/?id={workshopId}";
@@ -920,6 +1421,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 FileName = steamUrl,
                 UseShellExecute = true
             });
+
+            return true;
         }
         catch
         {
@@ -930,10 +1433,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     FileName = webUrl,
                     UseShellExecute = true
                 });
+
+                return true;
             }
             catch
             {
-                // Ignore launch failures.
+                return false;
             }
         }
     }

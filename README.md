@@ -38,6 +38,8 @@ This tool only helps you manage and switch between already downloaded mods. It r
 | Search/filter and bulk toggle mods | &#10003; |
 | Logging (operations and crash logs) | &#10003; |
 | Built-in Steam Workshop page opening after delete | &#10003; |
+| Profile package import/export (JSON) | &#10003; |
+| Missing mod assistant (manual workshop opening) | &#10003; |
 | CLI mode | &#10007; |
 | Drag-and-drop mod package import | &#10007; |
 
@@ -51,6 +53,41 @@ Enable/disable mods in the UI, then save that selection as a named profile (for 
 
 3. Apply when needed.
 Select a saved profile and click apply. The app renames folders to match your profile and creates a snapshot backup first.
+
+4. Share profiles with package import/export.
+Use `EXPORT SELECTED` or `EXPORT ALL` to create a portable JSON profile package. Use `IMPORT PACKAGE` to import packages from other users, with conflict handling (`Rename`, `Overwrite`, or `Skip`).
+
+5. Resolve missing mods manually (no SteamCMD).
+If a profile references workshop IDs you do not have locally, the Missing Mods panel appears. Use:
+- `OPEN NEXT MISSING MOD` to open each required Workshop page (`steam://` first, then browser fallback).
+- `COPY ALL MISSING IDS` to copy all IDs.
+- `RESCAN` after subscribing/downloading.
+- `APPLY AGAIN` once missing mods are installed.
+The app logs opened IDs, import/apply outcomes, and remaining missing IDs after rescans.
+
+## Profile Package Format
+
+Exported packages use JSON schema version `1`:
+
+```json
+{
+  "schemaVersion": 1,
+  "packageName": "All Profiles",
+  "createdAtUtc": "2026-02-16T10:15:30.0000000Z",
+  "profiles": [
+    {
+      "name": "PvE Coop",
+      "notes": "Carrier ops setup",
+      "enabledWorkshopIds": ["1234567890", "9876543210"]
+    }
+  ]
+}
+```
+
+Notes:
+- `enabledWorkshopIds` are numeric Steam Workshop IDs (non-numeric values are dropped on import).
+- Duplicate workshop IDs in a profile are removed automatically.
+- Name conflicts during import follow your selected policy.
 
 ## Installation
 
@@ -106,6 +143,10 @@ Use manual path override and point to:
 ### My mods did not switch as expected
 
 Close VTOL VR and Steam, reopen the app, rescan, then apply again. If needed, restore the latest snapshot backup.
+
+### Imported/applied profile shows missing mods
+
+Use the Missing Mods panel to open required workshop pages one by one, wait for Steam to download them, then click `RESCAN` and `APPLY AGAIN`.
 
 ### A mod is missing metadata or thumbnail
 

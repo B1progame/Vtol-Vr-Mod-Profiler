@@ -76,6 +76,11 @@
       <Setter Property="Background" Value="#CC3A0B10" />
       <Setter Property="BorderBrush" Value="#FFFF4646" />    </Style>
 
+    <Style Selector="Button.compact-profile">
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+
     <Style Selector="Button.rainbow-update">
       <Setter Property="Background" Value="#CCFF3B30" />
       <Setter Property="BorderBrush" Value="#FFFFB74D" />
@@ -279,7 +284,7 @@
 
       <Grid RowDefinitions="Auto,Auto,*,Auto" ColumnDefinitions="310,*">
         <Border Grid.Row="0" Grid.ColumnSpan="2" Classes="chrome-panel" Padding="14">
-          <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" VerticalAlignment="Center">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" VerticalAlignment="Center">
             <Grid Width="64" Height="38" VerticalAlignment="Center">
               <Path Data="M4,30 L25,6 L32,14 L16,34 Z" Fill="#E8FF1A1A" Opacity="0.92" Stretch="Fill" />
               <Path Data="M30,30 L49,6 L60,14 L42,34 Z" Fill="#CCFF1A1A" Opacity="0.84" Stretch="Fill" />
@@ -298,8 +303,9 @@
             </StackPanel>
             <Button Grid.Column="2" Content="DETECT" Command="{Binding DetectPathsCommand}" MinWidth="96" />
             <Button Grid.Column="3" Content="REFRESH" Command="{Binding RefreshModsCommand}" MinWidth="96" />
-            <Button Grid.Column="4" Content="RESTORE LAST STATE" Command="{Binding RestoreLastStateCommand}" MinWidth="180" />
-            <Button Grid.Column="5" Command="{Binding ToggleSettingsCommand}" MinWidth="118">
+            <Button Grid.Column="4" Content="CLEAN DUPES" Command="{Binding CleanDuplicateModsCommand}" MinWidth="116" />
+            <Button Grid.Column="5" Content="RESTORE LAST STATE" Command="{Binding RestoreLastStateCommand}" MinWidth="180" />
+            <Button Grid.Column="6" Command="{Binding ToggleSettingsCommand}" MinWidth="118">
               <Grid ColumnDefinitions="Auto,Auto">
                 <TextBlock Text="SETTINGS" />
                 <Border Grid.Column="1" Classes="update-badge" Margin="6,0,0,0" IsVisible="{Binding HasUpdateAvailable}">
@@ -320,28 +326,45 @@
         </Border>
 
         <Border Grid.Row="2" Grid.Column="0" Classes="chrome-panel" Padding="12">
-          <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+          <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*">
             <TextBlock Text="PROFILES" FontSize="17" FontWeight="Bold" LetterSpacing="1.4" />
             <TextBox Grid.Row="1" Watermark="PROFILE NAME" Text="{Binding ProfileNameInput}" />
             <TextBox Grid.Row="2" Watermark="NOTES" Text="{Binding ProfileNotesInput}" />
             <Grid Grid.Row="3">
               <StackPanel Orientation="Horizontal"
                           HorizontalAlignment="Stretch"
-                          Spacing="8">
+                          Spacing="4">
                 <Button Content="ADD PROFILE"
+                        Classes="compact-profile"
                         Command="{Binding SaveProfileCommand}"
                         HorizontalAlignment="Stretch" />
                 <Button Content="SAVE"
+                        Classes="compact-profile"
                         Command="{Binding SaveProfileCommand}"
                         HorizontalAlignment="Stretch" />
                 <Button Content="DELETE"
+                        Classes="compact-profile"
                         Command="{Binding DeleteSelectedProfileCommand}"
                         HorizontalAlignment="Stretch" />
               </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="4" RowDefinitions="*,Auto">
+            <Grid Grid.Row="4" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+              <TextBlock Text="Import conflicts:" VerticalAlignment="Center" Foreground="#A8B7CA" Margin="0,0,8,0" />
+              <ComboBox Grid.Column="1"
+                        ItemsSource="{Binding ImportConflictPolicyOptions}"
+                        SelectedItem="{Binding SelectedImportConflictPolicy, Mode=TwoWay}" />
+            </Grid>
+
+            <Grid Grid.Row="5" RowDefinitions="Auto,*,Auto">
+              <WrapPanel Margin="0,0,0,8">
+                <Button Classes="compact-profile" Content="IMPORT PACKAGE" Command="{Binding ImportProfilePackageCommand}" Margin="0,0,4,4" />
+                <Button Classes="compact-profile" Content="EXPORT SELECTED" Command="{Binding ExportSelectedProfilePackageCommand}" Margin="0,0,4,4" />
+                <Button Classes="compact-profile" Content="EXPORT ALL" Command="{Binding ExportAllProfilesPackageCommand}" Margin="0,0,4,4" />
+              </WrapPanel>
+
               <ListBox ItemsSource="{Binding Profiles}"
+                       Grid.Row="1"
                        SelectedItem="{Binding SelectedProfile}"
                        Background="#66030A14"
                        BorderBrush="#44FF1A1A"
@@ -359,13 +382,13 @@
                   </DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
-              <Button Grid.Row="1" Content="APPLY SELECTED PROFILE" Command="{Binding ApplySelectedProfileCommand}" />
+              <Button Grid.Row="2" Classes="compact-profile" Content="APPLY SELECTED PROFILE" Command="{Binding ApplySelectedProfileCommand}" />
             </Grid>
           </Grid>
         </Border>
 
         <Border Grid.Row="2" Grid.Column="1" Classes="chrome-panel" Padding="10">
-          <Grid RowDefinitions="Auto,*">
+          <Grid RowDefinitions="Auto,Auto,*">
             <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*">
               <Button Content="ENABLE ALL" Command="{Binding EnableAllCommand}" MinWidth="108" />
               <Button Grid.Column="1" Content="DISABLE ALL" Command="{Binding DisableAllCommand}" MinWidth="108" />
@@ -379,7 +402,41 @@
               </StackPanel>
             </Grid>
 
-            <ScrollViewer Grid.Row="1"
+            <Border Grid.Row="1" Classes="card-panel" Padding="8" IsVisible="{Binding HasMissingMods}" Margin="0,8,0,8">
+              <Grid RowDefinitions="Auto,Auto,Auto,Auto">
+                <TextBlock Text="{Binding MissingModsContext, StringFormat=Missing Mods ({0})}" FontWeight="Bold" />
+                <TextBlock Grid.Row="1" Text="{Binding MissingModsCount, StringFormat={}{0} required mods are missing locally.}" Foreground="#FFD08A" Margin="0,6,0,6" />
+                <TextBlock Grid.Row="2"
+                           Text="After Steam finishes downloading, press CLEAN DUPES."
+                           Foreground="#9ED7FF"
+                           FontSize="12"
+                           Margin="0,0,0,6" />
+                <Grid Grid.Row="3" ColumnDefinitions="*,Auto">
+                  <ItemsControl ItemsSource="{Binding MissingWorkshopIds}" MaxHeight="88">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="#330E1625" BorderBrush="#55FF1A1A" BorderThickness="1" CornerRadius="5" Padding="6,2" Margin="0,0,6,6">
+                          <TextBlock Text="{Binding .}" FontFamily="Consolas, Cascadia Mono, Courier New" FontSize="12" />
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <StackPanel Grid.Column="1" Spacing="6" Width="185" Margin="8,0,0,0">
+                    <Button Content="OPEN NEXT MISSING MOD" Command="{Binding OpenNextMissingModCommand}" />
+                    <Button Content="COPY ALL MISSING IDS" Command="{Binding CopyAllMissingIdsCommand}" />
+                    <Button Content="RESCAN" Command="{Binding RescanMissingModsCommand}" />
+                    <Button Content="APPLY AGAIN" Command="{Binding ApplyAgainCommand}" IsEnabled="{Binding CanApplyAgain}" />
+                  </StackPanel>
+                </Grid>
+              </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="2"
                           VerticalScrollBarVisibility="Visible"
                           HorizontalScrollBarVisibility="Disabled"
                           AllowAutoHide="False">
