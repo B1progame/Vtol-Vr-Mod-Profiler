@@ -28,7 +28,17 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets\**\*" />
   </ItemGroup>
+
+  <!-- Prevent accidentally compiling generated sources from renamed build folders -->
+  <ItemGroup>
+    <Compile Remove="bin-weg\**\*.cs;obj-weg\**\*.cs" />
+    <EmbeddedResource Remove="bin-weg\**\*;obj-weg\**\*" />
+    <None Remove="bin-weg\**\*;obj-weg\**\*" />
+  </ItemGroup>
 </Project>
+
+
+
 
 
 
