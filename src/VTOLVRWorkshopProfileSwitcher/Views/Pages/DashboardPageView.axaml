@@ -56,8 +56,8 @@
       <StackPanel Spacing="12">
         <TextBlock Text="Launch VTOL VR" Classes="section-title" />
         <Grid ColumnDefinitions="*,*">
-          <Button Content="{Binding Shell.PlayModdedButtonText}" Classes="success-button big-play-button" IsEnabled="{Binding Shell.CanLaunchGame}" Command="{Binding Shell.PlayModdedCommand}" />
-          <Button Grid.Column="1" Content="{Binding Shell.PlayVanillaButtonText}" Classes="primary-button big-play-button" IsEnabled="{Binding Shell.CanLaunchGame}" Command="{Binding Shell.PlayVanillaCommand}" />
+          <Button Content="{Binding Shell.PlayModdedButtonText}" Classes="success-button big-play-button" IsEnabled="{Binding Shell.CanLaunchGame}" PointerEntered="OnLaunchButtonPointerEntered" PointerExited="OnLaunchButtonPointerExited" Command="{Binding Shell.PlayModdedCommand}" />
+          <Button Grid.Column="1" Content="{Binding Shell.PlayVanillaButtonText}" Classes="primary-button big-play-button" IsEnabled="{Binding Shell.CanLaunchGame}" PointerEntered="OnLaunchButtonPointerEntered" PointerExited="OnLaunchButtonPointerExited" Command="{Binding Shell.PlayVanillaCommand}" />
         </Grid>
       </StackPanel>
     </Border>

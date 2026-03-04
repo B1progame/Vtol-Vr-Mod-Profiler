@@ -91,10 +91,10 @@ public sealed partial class MainWindowViewModel
         SelectedProfileModEntry is not null &&
         !SelectedProfileModEntry.IsDependencyOnly;
     public string ProfileUnderEditText => ProfileUnderEdit is null ? "No profile selected" : $"Editing: {ProfileUnderEdit.Name}";
-    public bool CanLaunchGame => !IsLaunchingGame;
-    public string SidebarPlayText => IsLaunchingGame ? "LAUNCHING..." : "PLAY";
-    public string PlayModdedButtonText => IsLaunchingGame ? "LAUNCHING..." : "PLAY (MODDED)";
-    public string PlayVanillaButtonText => IsLaunchingGame ? "LAUNCHING..." : "PLAY (VANILLA)";
+    public bool CanLaunchGame => true;
+    public string SidebarPlayText => GetLaunchButtonText("Play");
+    public string PlayModdedButtonText => GetLaunchButtonText("PLAY (MODDED)");
+    public string PlayVanillaButtonText => GetLaunchButtonText("PLAY (VANILLA)");
     public string SelectedModTitle => SelectedMod?.ModName ?? "No Mod Selected";
     public string SelectedModAuthor => _selectedModAuthor;
     public string SelectedModLastUpdated => _selectedModLastUpdated;
@@ -167,10 +167,81 @@ public sealed partial class MainWindowViewModel
 
     partial void OnIsLaunchingGameChanged(bool value)
     {
+        if (!value)
+        {
+            IsLaunchButtonHovered = false;
+        }
+
         OnPropertyChanged(nameof(CanLaunchGame));
         OnPropertyChanged(nameof(SidebarPlayText));
         OnPropertyChanged(nameof(PlayModdedButtonText));
         OnPropertyChanged(nameof(PlayVanillaButtonText));
+    }
+
+    partial void OnIsLaunchButtonHoveredChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SidebarPlayText));
+        OnPropertyChanged(nameof(PlayModdedButtonText));
+        OnPropertyChanged(nameof(PlayVanillaButtonText));
+    }
+
+    public void SetLaunchButtonHovered(bool isHovered)
+    {
+        IsLaunchButtonHovered = isHovered && IsLaunchingGame;
+    }
+
+    private string GetLaunchButtonText(string idleText)
+    {
+        if (!IsLaunchingGame)
+        {
+            return idleText;
+        }
+
+        return IsLaunchButtonHovered ? "Cancel" : "Launching...";
+    }
+
+    private void RequestLaunchCancel(string mode)
+    {
+        if (!IsLaunchingGame || _launchCts is null || _launchCts.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _launchCts.Cancel();
+        StatusMessage = $"Canceling {mode} launch...";
+    }
+
+    private bool IsLaunchCanceled(CancellationToken token, string canceledMessage)
+    {
+        if (!token.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        StatusMessage = canceledMessage;
+        return true;
+    }
+
+    private CancellationToken BeginLaunch()
+    {
+        _launchCts?.Cancel();
+        _launchCts?.Dispose();
+        _launchCts = new CancellationTokenSource();
+        return _launchCts.Token;
+    }
+
+    private void EndLaunch(CancellationToken token)
+    {
+        IsLaunchButtonHovered = false;
+        IsLaunchingGame = false;
+
+        if (_launchCts is null || _launchCts.Token != token)
+        {
+            return;
+        }
+
+        _launchCts.Dispose();
+        _launchCts = null;
     }
 
     partial void OnSelectedModChanged(ModItemViewModel? value)
@@ -1094,43 +1165,59 @@ public sealed partial class MainWindowViewModel
     {
         if (IsLaunchingGame)
         {
+            RequestLaunchCancel("modded");
             return;
         }
 
+        var launchToken = BeginLaunch();
         IsLaunchingGame = true;
         StatusMessage = "Launching modded...";
         await Task.Yield();
 
         try
         {
-        ProfileItemViewModel? profileToUse = null;
+            ProfileItemViewModel? profileToUse = null;
 
-        if (CurrentPageViewModel is ProfileDetailsPageViewModel detailsPage)
-        {
-            profileToUse = detailsPage.Profile;
-        }
+            if (CurrentPageViewModel is ProfileDetailsPageViewModel detailsPage)
+            {
+                profileToUse = detailsPage.Profile;
+            }
 
-        if (profileToUse is null)
-        {
-            profileToUse = await PickProfileAsync();
-        }
+            if (profileToUse is null)
+            {
+                profileToUse = await PickProfileAsync();
+                if (IsLaunchCanceled(launchToken, "Modded launch canceled"))
+                {
+                    return;
+                }
+            }
 
-        if (profileToUse is null)
-        {
-            StatusMessage = "Modded launch canceled";
-            return;
-        }
+            if (profileToUse is null)
+            {
+                StatusMessage = "Modded launch canceled";
+                return;
+            }
 
-        SelectedProfile = profileToUse;
-        await ApplySelectedProfileAsync();
-        await EnsureDoorstopEnabledAsync(true, "modded launch");
-        LaunchVtolVr();
-        await _logger.LogAsync($"Launched VTOL VR modded with profile '{profileToUse.Name}'");
-        await ReloadLogsAsync();
+            SelectedProfile = profileToUse;
+            await ApplySelectedProfileAsync();
+            if (IsLaunchCanceled(launchToken, "Modded launch canceled"))
+            {
+                return;
+            }
+
+            await EnsureDoorstopEnabledAsync(true, "modded launch");
+            if (IsLaunchCanceled(launchToken, "Modded launch canceled"))
+            {
+                return;
+            }
+
+            LaunchVtolVr();
+            await _logger.LogAsync($"Launched VTOL VR modded with profile '{profileToUse.Name}'");
+            await ReloadLogsAsync();
         }
         finally
         {
-            IsLaunchingGame = false;
+            EndLaunch(launchToken);
         }
     }
 
@@ -1139,24 +1226,36 @@ public sealed partial class MainWindowViewModel
     {
         if (IsLaunchingGame)
         {
+            RequestLaunchCancel("vanilla");
             return;
         }
 
+        var launchToken = BeginLaunch();
         IsLaunchingGame = true;
         StatusMessage = "Launching vanilla...";
         await Task.Yield();
 
         try
         {
-        await ApplyEnabledSetAsync(new HashSet<string>(StringComparer.Ordinal), Array.Empty<string>(), "vanilla launch");
-        await EnsureDoorstopEnabledAsync(false, "vanilla launch");
-        LaunchVtolVr();
-        await _logger.LogAsync("Launched VTOL VR vanilla");
-        await ReloadLogsAsync();
+            await ApplyEnabledSetAsync(new HashSet<string>(StringComparer.Ordinal), Array.Empty<string>(), "vanilla launch");
+            if (IsLaunchCanceled(launchToken, "Vanilla launch canceled"))
+            {
+                return;
+            }
+
+            await EnsureDoorstopEnabledAsync(false, "vanilla launch");
+            if (IsLaunchCanceled(launchToken, "Vanilla launch canceled"))
+            {
+                return;
+            }
+
+            LaunchVtolVr();
+            await _logger.LogAsync("Launched VTOL VR vanilla");
+            await ReloadLogsAsync();
         }
         finally
         {
-            IsLaunchingGame = false;
+            EndLaunch(launchToken);
         }
     }
 

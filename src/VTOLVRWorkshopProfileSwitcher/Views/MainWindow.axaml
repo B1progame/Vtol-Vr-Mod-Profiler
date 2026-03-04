@@ -82,19 +82,23 @@
         </StackPanel>
 
         <Border Grid.Row="2" Classes="sidebar-play-bar" Margin="0,16,0,0">
-          <Grid ColumnDefinitions="*,58">
+          <Grid ColumnDefinitions="*,52">
             <Button Content="{Binding SidebarPlayText}"
                     Classes="split-button-main"
                     IsEnabled="{Binding CanLaunchGame}"
+                    PointerEntered="OnLaunchButtonPointerEntered"
+                    PointerExited="OnLaunchButtonPointerExited"
                     Command="{Binding PlayModdedCommand}" />
             <Border Grid.Column="1" BorderBrush="{DynamicResource BorderDark}" BorderThickness="1,0,0,0">
-              <Button Content="v" Classes="split-button-arrow" IsEnabled="{Binding CanLaunchGame}">
+              <Button Content="▼" Classes="split-button-arrow" IsEnabled="{Binding CanLaunchGame}">
                 <Button.Flyout>
                   <Flyout Placement="TopEdgeAlignedRight">
-                    <StackPanel Spacing="6" Width="180" DataContext="{Binding DataContext, ElementName=RootWindow}">
-                      <Button Content="Play (Modded)" Classes="secondary-button" Command="{Binding PlayModdedCommand}" />
-                      <Button Content="Play (Vanilla)" Classes="secondary-button" Command="{Binding PlayVanillaCommand}" />
-                    </StackPanel>
+                    <Border Classes="launch-flyout-panel">
+                      <StackPanel Spacing="8" Width="176" DataContext="{Binding DataContext, ElementName=RootWindow}">
+                        <Button Content="Play (Modded)" Classes="launch-flyout-button" Command="{Binding PlayModdedCommand}" />
+                        <Button Content="Play (Vanilla)" Classes="launch-flyout-button" Command="{Binding PlayVanillaCommand}" />
+                      </StackPanel>
+                    </Border>
                   </Flyout>
                 </Button.Flyout>
               </Button>

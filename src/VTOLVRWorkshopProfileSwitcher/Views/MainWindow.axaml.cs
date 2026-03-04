@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Threading;
 using VTOLVRWorkshopProfileSwitcher.ViewModels;
 
@@ -61,6 +62,16 @@ public partial class MainWindow : Window
         var isBlue = string.Equals(design, "STEEL BLUE", StringComparison.OrdinalIgnoreCase);
         Classes.Set("design-blue", isBlue);
         Classes.Set("design-red", !isBlue);
+    }
+
+    private void OnLaunchButtonPointerEntered(object? sender, PointerEventArgs e)
+    {
+        _subscribedViewModel?.SetLaunchButtonHovered(true);
+    }
+
+    private void OnLaunchButtonPointerExited(object? sender, PointerEventArgs e)
+    {
+        _subscribedViewModel?.SetLaunchButtonHovered(false);
     }
 
 }

@@ -15,7 +15,7 @@
       <TextBlock Grid.Column="1" Text="{Binding Profile.Name}" Classes="section-title" VerticalAlignment="Center" />
       <Button Grid.Column="2" Content="Add Mod" Classes="primary-button" Command="{Binding Shell.OpenAddModFlowCommand}" />
       <Button Grid.Column="3" Margin="8,0,0,0" Content="Reload + Check Deps" Classes="secondary-button" Command="{Binding Shell.ReloadProfileModsAndCheckDependenciesCommand}" />
-      <Button Grid.Column="4" Margin="8,0,0,0" Content="{Binding Shell.PlayModdedButtonText}" Classes="success-button" IsEnabled="{Binding Shell.CanLaunchGame}" Command="{Binding Shell.PlayModdedCommand}" />
+      <Button Grid.Column="4" Margin="8,0,0,0" Content="{Binding Shell.PlayModdedButtonText}" Classes="success-button" IsEnabled="{Binding Shell.CanLaunchGame}" PointerEntered="OnLaunchButtonPointerEntered" PointerExited="OnLaunchButtonPointerExited" Command="{Binding Shell.PlayModdedCommand}" />
     </Grid>
 
     <Border Grid.Row="1" Classes="card-panel" Padding="12" Margin="0,12,0,0">

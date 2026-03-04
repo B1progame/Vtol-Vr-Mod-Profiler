@@ -105,6 +105,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private bool isLaunchingGame;
 
     [ObservableProperty]
+    private bool isLaunchButtonHovered;
+
+    [ObservableProperty]
     private bool openSteamPageAfterDelete = true;
 
     [ObservableProperty]
@@ -184,6 +187,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public override void Dispose()
     {
         TrySetDoorstopEnabled(false, out _, out _);
+        _launchCts?.Cancel();
+        _launchCts?.Dispose();
         _addModeProfileSaveCts?.Cancel();
         _addModeProfileSaveCts?.Dispose();
         _dependencyPreviewCts?.Cancel();
@@ -195,6 +200,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _liveDependencyLock.Dispose();
         _refreshLock.Dispose();
     }
+
+    private CancellationTokenSource? _launchCts;
 
     partial void OnSearchQueryChanged(string value)
     {
