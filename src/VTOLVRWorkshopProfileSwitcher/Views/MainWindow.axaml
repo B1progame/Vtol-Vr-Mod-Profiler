@@ -11,7 +11,7 @@
         x:Name="RootWindow"
         x:DataType="vm:MainWindowViewModel"
         x:CompileBindings="False"
-        Title="VTOL VR Mod Profiler"
+        Title="VTOL VR Switcher"
         Width="1560"
         Height="940"
         MinWidth="1200"
@@ -62,7 +62,7 @@
 
     <Border Grid.Column="0" Classes="sidebar-panel" Padding="12" Margin="0,0,12,0">
       <Grid RowDefinitions="Auto,*,Auto">
-        <TextBlock Text="VTOL VR Mod Profiler"
+        <TextBlock Text="VTOL VR Switcher"
                    FontSize="23"
                    FontWeight="Bold"
                    Height="84"
@@ -78,7 +78,20 @@
           <Button Content="Mods" Classes="sidebar-item" Classes.sidebar-item-active="{Binding IsModsSelected}" Command="{Binding NavigateModsCommand}" />
           <Button Content="Backups" Classes="sidebar-item" Classes.sidebar-item-active="{Binding IsBackupsSelected}" Command="{Binding NavigateBackupsCommand}" />
           <Button Content="Logs" Classes="sidebar-item" Classes.sidebar-item-active="{Binding IsLogsSelected}" Command="{Binding NavigateLogsCommand}" />
-          <Button Content="Settings" Classes="sidebar-item" Classes.sidebar-item-active="{Binding IsSettingsSelected}" Command="{Binding NavigateSettingsCommand}" />
+          <Button Classes="sidebar-item"
+                  Classes.sidebar-item-active="{Binding IsSettingsSelected}"
+                  Classes.update-alert="{Binding HasUpdateAvailable}"
+                  Command="{Binding NavigateSettingsCommand}">
+            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+              <TextBlock Text="Settings" VerticalAlignment="Center" />
+              <Border Grid.Column="1"
+                      Classes="settings-warning-badge"
+                      IsVisible="{Binding HasUpdateAvailable}"
+                      VerticalAlignment="Center">
+                <TextBlock Text="!" />
+              </Border>
+            </Grid>
+          </Button>
         </StackPanel>
 
         <Border Grid.Row="2" Classes="sidebar-play-bar" Margin="0,16,0,0">

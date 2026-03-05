@@ -12,9 +12,9 @@
     <conv:BoolToOnOffConverter x:Key="OnOffConverter" />
   </UserControl.Resources>
 
-  <Border Classes="mod-card" Width="246" Height="220">
-    <Grid RowDefinitions="108,Auto,*">
-      <Border Grid.Row="0" CornerRadius="8" Background="#1D2A42" ClipToBounds="True">
+  <Border Classes="mod-card" Width="246" Height="262">
+    <Grid RowDefinitions="150,Auto,*">
+      <Border Grid.Row="0" CornerRadius="8" Background="#203c6b" ClipToBounds="True">
         <Image Source="{Binding ThumbnailImage, ElementName=Root}" Stretch="UniformToFill" />
       </Border>
 

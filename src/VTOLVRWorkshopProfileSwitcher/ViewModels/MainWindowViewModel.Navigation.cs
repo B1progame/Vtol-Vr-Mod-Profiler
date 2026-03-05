@@ -455,6 +455,12 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
+        if (ReferenceEquals(SelectedMod, mod))
+        {
+            IsDetailsOpen = !IsDetailsOpen;
+            return;
+        }
+
         SelectedProfileModEntry = null;
         SelectedMod = mod;
         IsDetailsOpen = true;
@@ -1211,7 +1217,7 @@ public sealed partial class MainWindowViewModel
                 return;
             }
 
-            LaunchVtolVr();
+            LaunchVtolVr(doorstopEnabled: true);
             await _logger.LogAsync($"Launched VTOL VR modded with profile '{profileToUse.Name}'");
             await ReloadLogsAsync();
         }
@@ -1249,7 +1255,7 @@ public sealed partial class MainWindowViewModel
                 return;
             }
 
-            LaunchVtolVr();
+            LaunchVtolVr(doorstopEnabled: false);
             await _logger.LogAsync("Launched VTOL VR vanilla");
             await ReloadLogsAsync();
         }
@@ -1259,13 +1265,62 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private void LaunchVtolVr()
+    private void LaunchVtolVr(bool doorstopEnabled)
     {
+        var vrRuntimeArg = GetVrRuntimeLaunchArgument();
+        var arguments = $"-applaunch 667970 --doorstop-enabled {(doorstopEnabled ? "true" : "false")}";
+        if (!string.IsNullOrWhiteSpace(vrRuntimeArg))
+        {
+            arguments = $"{arguments} {vrRuntimeArg}";
+        }
+
+        var steamExePath = ResolveSteamExePath();
+        if (!string.IsNullOrWhiteSpace(steamExePath))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = steamExePath,
+                Arguments = arguments,
+                UseShellExecute = false
+            });
+            return;
+        }
+
         Process.Start(new ProcessStartInfo
         {
             FileName = "steam://run/667970",
             UseShellExecute = true
         });
+    }
+
+    private string ResolveSteamExePath()
+    {
+        var candidates = new List<string>();
+
+        var fromDoorstopConfig = ResolveDoorstopConfigPath();
+        if (!string.IsNullOrWhiteSpace(fromDoorstopConfig))
+        {
+            try
+            {
+                var vtolDir = Path.GetDirectoryName(fromDoorstopConfig);
+                var commonDir = vtolDir is null ? null : Path.GetDirectoryName(vtolDir);
+                var steamAppsDir = commonDir is null ? null : Path.GetDirectoryName(commonDir);
+                var steamRoot = steamAppsDir is null ? null : Path.GetDirectoryName(steamAppsDir);
+                if (!string.IsNullOrWhiteSpace(steamRoot))
+                {
+                    candidates.Add(Path.Combine(steamRoot, "steam.exe"));
+                }
+            }
+            catch
+            {
+                // Fall through to other candidates.
+            }
+        }
+
+        candidates.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam", "steam.exe"));
+        candidates.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Steam", "steam.exe"));
+
+        return candidates.FirstOrDefault(File.Exists) ?? string.Empty;
     }
 
     private async Task EnsureDoorstopEnabledAsync(bool enabled, string context)
@@ -1280,7 +1335,7 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        await _logger.LogAsync($"Doorstop set to {(enabled ? "true" : "false")} ({context}). path='{configPath}'");
+        // Intentionally avoid logging successful doorstop toggles to keep launch logs clean.
     }
 
     private bool TrySetDoorstopEnabled(bool enabled, out string configPath, out string errorMessage)
@@ -1498,3 +1553,4 @@ public sealed partial class MainWindowViewModel
         return false;
     }
 }
+

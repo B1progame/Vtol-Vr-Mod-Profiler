@@ -17,6 +17,23 @@
         <StackPanel Spacing="10">
           <TextBlock Text="General" Classes="section-title" />
           <CheckBox Content="Open Steam page after delete" IsChecked="{Binding Shell.OpenSteamPageAfterDelete}" />
+
+          <TextBlock Text="VR Runtime" Classes="text-muted" Margin="0,6,0,0" />
+          <RadioButton Content="SteamVR (default)"
+                       GroupName="VrRuntime"
+                       IsChecked="{Binding Shell.IsSteamVrRuntime}"
+                       Command="{Binding Shell.SetVrRuntimeCommand}"
+                       CommandParameter="SteamVR" />
+          <RadioButton Content="Oculus"
+                       GroupName="VrRuntime"
+                       IsChecked="{Binding Shell.IsOculusRuntime}"
+                       Command="{Binding Shell.SetVrRuntimeCommand}"
+                       CommandParameter="Oculus" />
+          <RadioButton Content="OpenXR"
+                       GroupName="VrRuntime"
+                       IsChecked="{Binding Shell.IsOpenXrRuntime}"
+                       Command="{Binding Shell.SetVrRuntimeCommand}"
+                       CommandParameter="OpenXR" />
         </StackPanel>
       </Border>
 

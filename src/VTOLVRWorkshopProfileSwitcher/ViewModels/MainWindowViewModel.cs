@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
@@ -29,7 +30,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private const string GitHubOwner = "B1progame";
     private const string GitHubRepoName = "Vtol-Vr-Mod-Profiler";
     private const string ReleasesPageUrl = "https://github.com/B1progame/Vtol-Vr-Mod-Profiler/releases";
-    private const string DefaultInstallerAssetName = "VTOLVRWorkshopProfileSwitcher-Setup.exe";
+    private const string DefaultInstallerAssetName = "VTOLVRSwitcher-Setup.exe";
     private static readonly Version CurrentAppVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
     private static readonly string CurrentVersionId = GetCurrentVersionId();
     private static readonly HttpClient GitHubHttpClient = new();
@@ -47,6 +48,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly AppSettingsService _settingsService;
     private readonly AppLogger _logger;
     private readonly DirectorySizeCacheService _directorySizeCache = new();
+    private const string VrRuntimeSteamVr = "SteamVR";
+    private const string VrRuntimeOculus = "Oculus";
+    private const string VrRuntimeOpenXr = "OpenXR";
 
     private readonly ObservableCollection<ModItemViewModel> _allMods = new();
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
@@ -61,6 +65,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private List<string> _lastRequiredOrderedIds = new();
     private string _lastApplyContext = string.Empty;
     private DateTime _lastAutoCleanupUtc = DateTime.MinValue;
+    private bool _startupInitializationComplete;
+    private bool _startupUpdateCheckQueued;
 
     [ObservableProperty]
     private ObservableCollection<ModItemViewModel> filteredMods = new();
@@ -141,6 +147,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private bool autoInstallUpdates;
 
     [ObservableProperty]
+    private string selectedVrRuntime = VrRuntimeSteamVr;
+
+    [ObservableProperty]
     private string latestInstallerUrl = string.Empty;
 
     [ObservableProperty]
@@ -160,6 +169,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public IReadOnlyList<string> DesignOptions { get; } = new[] { "TACTICAL RED", "STEEL BLUE" };
     public IReadOnlyList<string> ImportConflictPolicyOptions { get; } = new[] { "Rename", "Overwrite", "Skip" };
+    public IReadOnlyList<string> VrRuntimeOptions { get; } = new[] { VrRuntimeSteamVr, VrRuntimeOculus, VrRuntimeOpenXr };
+    public bool IsSteamVrRuntime => string.Equals(SelectedVrRuntime, VrRuntimeSteamVr, StringComparison.OrdinalIgnoreCase);
+    public bool IsOculusRuntime => string.Equals(SelectedVrRuntime, VrRuntimeOculus, StringComparison.OrdinalIgnoreCase);
+    public bool IsOpenXrRuntime => string.Equals(SelectedVrRuntime, VrRuntimeOpenXr, StringComparison.OrdinalIgnoreCase);
     public int MissingModsCount => MissingWorkshopIds.Count;
     public bool HasMissingMods => MissingModsCount > 0;
     public bool CanApplyAgain => _lastRequestedEnabledSet is not null && _lastRequestedEnabledSet.Count > 0;
@@ -239,6 +252,39 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         SaveSettingsIfNeeded();
     }
 
+    partial void OnSelectedVrRuntimeChanged(string value)
+    {
+        if (!VrRuntimeOptions.Contains(value, StringComparer.OrdinalIgnoreCase))
+        {
+            SelectedVrRuntime = VrRuntimeSteamVr;
+            return;
+        }
+
+        OnPropertyChanged(nameof(IsSteamVrRuntime));
+        OnPropertyChanged(nameof(IsOculusRuntime));
+        OnPropertyChanged(nameof(IsOpenXrRuntime));
+        SaveSettingsIfNeeded();
+    }
+
+    [RelayCommand]
+    private void SetVrRuntime(string? runtime)
+    {
+        if (string.IsNullOrWhiteSpace(runtime))
+        {
+            return;
+        }
+
+        if (!VrRuntimeOptions.Contains(runtime, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!string.Equals(SelectedVrRuntime, runtime, StringComparison.OrdinalIgnoreCase))
+        {
+            SelectedVrRuntime = runtime;
+        }
+    }
+
     partial void OnMissingWorkshopIdsChanged(ObservableCollection<string> value)
     {
         OnPropertyChanged(nameof(MissingModsCount));
@@ -303,6 +349,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
             if (AutoInstallUpdates && CanAutoInstallUpdate)
             {
+                if (!_startupInitializationComplete)
+                {
+                    UpdateStatusText = $"New version available: {LatestReleaseVersion} (auto install will run after startup)";
+                    return;
+                }
+
                 await DownloadAndInstallUpdateAsync();
             }
         }
@@ -342,7 +394,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         try
         {
             var fileName = string.IsNullOrWhiteSpace(LatestInstallerFileName)
-                ? $"{GitHubRepoName}-Setup.exe"
+                ? DefaultInstallerAssetName
                 : LatestInstallerFileName;
 
             var tempDir = Path.Combine(Path.GetTempPath(), "VTOLVRWorkshopProfileSwitcher", "updates");
@@ -358,27 +410,85 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 await source.CopyToAsync(target);
             }
 
-            UpdateStatusText = "Download complete. Starting installer...";
-            Process.Start(new ProcessStartInfo
+            var runFullInstallerUi = ShouldRunFullInstallerUi(LatestReleaseVersion, CurrentAppVersion);
+            UpdateStatusText = runFullInstallerUi
+                ? "Download complete. Launching installer UI..."
+                : "Download complete. Installing update...";
+            var installerArguments = runFullInstallerUi
+                ? string.Empty
+                : "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS";
+            var currentExePath = Environment.ProcessPath;
+            var installerProcess = Process.Start(new ProcessStartInfo
             {
                 FileName = installerPath,
+                Arguments = installerArguments,
                 UseShellExecute = true,
                 Verb = "runas"
             });
+
+            if (installerProcess is null)
+            {
+                UpdateStatusText = "Installer failed to start.";
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentExePath))
+            {
+                ScheduleRelaunchAfterInstaller(installerProcess.Id, currentExePath, LatestReleaseVersion);
+            }
 
             if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.Shutdown();
             }
         }
+        catch (Win32Exception)
+        {
+            UpdateStatusText = "Update installation was canceled.";
+        }
         catch
         {
-            UpdateStatusText = "Auto-install failed. Please try again.";
+            UpdateStatusText = "Update install failed. Please try again.";
         }
         finally
         {
             IsDownloadingUpdate = false;
         }
+    }
+
+    private static void ScheduleRelaunchAfterInstaller(int installerProcessId, string exePath, string? expectedVersionTag)
+    {
+        var escapedExePath = exePath.Replace("'", "''", StringComparison.Ordinal);
+        var normalizedExpected = NormalizeTag(expectedVersionTag).Replace("'", "''", StringComparison.Ordinal);
+        var script =
+            $"$expectedTag = '{normalizedExpected}'; " +
+            "$expectedVersion = $null; " +
+            "if (-not [string]::IsNullOrWhiteSpace($expectedTag)) { " +
+            "  try { $expectedVersion = [version]$expectedTag } catch { $expectedVersion = $null } " +
+            "}; " +
+            $"try {{ Wait-Process -Id {installerProcessId} -ErrorAction SilentlyContinue }} catch {{ }}; " +
+            "$deadline = (Get-Date).AddMinutes(3); " +
+            "while ((Get-Date) -lt $deadline) { " +
+            $"  if (-not (Test-Path '{escapedExePath}')) {{ Start-Sleep -Seconds 1; continue }}; " +
+            "  if ($null -eq $expectedVersion) { Start-Sleep -Seconds 4; break }; " +
+            "  try { " +
+            $"    $installedFileVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo('{escapedExePath}').FileVersion; " +
+            "    if (-not [string]::IsNullOrWhiteSpace($installedFileVersion)) { " +
+            "      $installedVersion = [version]$installedFileVersion; " +
+            "      if ($installedVersion -ge $expectedVersion) { break } " +
+            "    } " +
+            "  } catch { }; " +
+            "  Start-Sleep -Seconds 1; " +
+            "}; " +
+            $"if (Test-Path '{escapedExePath}') {{ Start-Process -FilePath '{escapedExePath}' }}";
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "powershell",
+            Arguments = $"-NoProfile -WindowStyle Hidden -Command \"{script}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        });
     }
 
     [RelayCommand]
@@ -995,8 +1105,39 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         await LoadSettingsAsync();
         await DetectPathsAsync();
         await LoadProfilesAsync();
-        await CheckForUpdatesAsync();
         await LoadShellDataAsync();
+        _startupInitializationComplete = true;
+        QueueStartupUpdateCheck();
+    }
+
+    private void QueueStartupUpdateCheck()
+    {
+        if (_startupUpdateCheckQueued)
+        {
+            return;
+        }
+
+        _startupUpdateCheckQueued = true;
+        _ = RunStartupUpdateCheckAsync();
+    }
+
+    private async Task RunStartupUpdateCheckAsync()
+    {
+        try
+        {
+            var waitUntil = DateTime.UtcNow.AddSeconds(30);
+            while (IsBusy && DateTime.UtcNow < waitUntil)
+            {
+                await Task.Delay(250);
+            }
+
+            await Task.Delay(750);
+            await CheckForUpdatesAsync();
+        }
+        catch
+        {
+            // Ignore startup update scheduling failures.
+        }
     }
 
     private async Task LoadProfilesAsync()
@@ -1612,6 +1753,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
             OpenSteamPageAfterDelete = settings.OpenSteamPageAfterDelete;
             AutoInstallUpdates = settings.AutoInstallUpdates;
+            if (VrRuntimeOptions.Contains(settings.VrRuntime, StringComparer.OrdinalIgnoreCase))
+            {
+                SelectedVrRuntime = settings.VrRuntime;
+            }
+            else
+            {
+                SelectedVrRuntime = VrRuntimeSteamVr;
+            }
         }
         finally
         {
@@ -1635,7 +1784,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             SelectedDesign = SelectedDesign,
             OpenSteamPageAfterDelete = OpenSteamPageAfterDelete,
-            AutoInstallUpdates = AutoInstallUpdates
+            AutoInstallUpdates = AutoInstallUpdates,
+            VrRuntime = SelectedVrRuntime
         };
 
         try
@@ -1683,8 +1833,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             return null;
         }
 
-        var normalized = tag.Trim().TrimStart('v', 'V');
+        var normalized = NormalizeTag(tag);
         return Version.TryParse(normalized, out var parsed) ? parsed : null;
+    }
+
+    private string GetVrRuntimeLaunchArgument()
+    {
+        if (string.Equals(SelectedVrRuntime, VrRuntimeOculus, StringComparison.OrdinalIgnoreCase))
+        {
+            return "oculus";
+        }
+
+        if (string.Equals(SelectedVrRuntime, VrRuntimeOpenXr, StringComparison.OrdinalIgnoreCase))
+        {
+            return "openxr";
+        }
+
+        return string.Empty;
     }
 
     private static string NormalizeTag(string? tag)
@@ -1694,7 +1859,47 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             return string.Empty;
         }
 
-        return tag.Trim().TrimStart('v', 'V');
+        var normalized = tag.Trim();
+        if (normalized.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[1..];
+        }
+
+        if (normalized.StartsWith(".", StringComparison.Ordinal))
+        {
+            normalized = normalized[1..];
+        }
+
+        return normalized.Trim();
+    }
+
+    private static bool HasSupportedUpdateTagFormat(string? tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            return false;
+        }
+
+        var trimmed = tag.Trim();
+        if (!trimmed.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var normalized = NormalizeTag(trimmed);
+        return Version.TryParse(normalized, out _);
+    }
+
+    private static bool ShouldRunFullInstallerUi(string? latestTag, Version currentVersion)
+    {
+        var latest = ParseVersion(latestTag);
+        if (latest is null)
+        {
+            return false;
+        }
+
+        return latest.Major != currentVersion.Major ||
+               latest.Minor != currentVersion.Minor;
     }
 
     private static string GetCurrentVersionId()
