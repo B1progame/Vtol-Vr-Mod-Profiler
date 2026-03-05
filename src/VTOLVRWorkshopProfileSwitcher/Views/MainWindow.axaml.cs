@@ -74,4 +74,15 @@ public partial class MainWindow : Window
         _subscribedViewModel?.SetLaunchButtonHovered(false);
     }
 
+    private void OnLaunchFlyoutOpened(object? sender, EventArgs e)
+    {
+        LaunchArrowButton.Classes.Set("open", true);
+        LaunchArrowGlyph.Classes.Set("open", true);
+    }
+
+    private void OnLaunchFlyoutClosed(object? sender, EventArgs e)
+    {
+        LaunchArrowButton.Classes.Set("open", false);
+        LaunchArrowGlyph.Classes.Set("open", false);
+    }
 }

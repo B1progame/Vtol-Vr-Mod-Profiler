@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -103,10 +103,11 @@
                     PointerExited="OnLaunchButtonPointerExited"
                     Command="{Binding PlayModdedCommand}" />
             <Border Grid.Column="1" BorderBrush="{DynamicResource BorderDark}" BorderThickness="1,0,0,0">
-              <Button Content="▼" Classes="split-button-arrow" IsEnabled="{Binding CanLaunchGame}">
+              <Button x:Name="LaunchArrowButton" Classes="split-button-arrow" IsEnabled="{Binding CanLaunchGame}">
+                <TextBlock x:Name="LaunchArrowGlyph" Text="▼" Classes="split-button-arrow-glyph" />
                 <Button.Flyout>
-                  <Flyout Placement="TopEdgeAlignedRight">
-                    <Border Classes="launch-flyout-panel">
+                  <Flyout Placement="TopEdgeAlignedRight" Opened="OnLaunchFlyoutOpened" Closed="OnLaunchFlyoutClosed">
+                    <Border Classes="launch-flyout-panel" Margin="0,0,0,6">
                       <StackPanel Spacing="8" Width="176" DataContext="{Binding DataContext, ElementName=RootWindow}">
                         <Button Content="Play (Modded)" Classes="launch-flyout-button" Command="{Binding PlayModdedCommand}" />
                         <Button Content="Play (Vanilla)" Classes="launch-flyout-button" Command="{Binding PlayVanillaCommand}" />
@@ -127,6 +128,7 @@
 
     <Border Grid.Column="2"
             Classes="details-panel card-panel"
+            Classes.details-panel-open="{Binding IsDetailsOpen}"
             Padding="12"
             IsVisible="{Binding IsDetailsOpen}">
       <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto">
@@ -205,4 +207,6 @@
   </Grid>
   </Border>
 </Window>
+
+
 

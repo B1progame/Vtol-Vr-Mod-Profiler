@@ -107,6 +107,17 @@
     <Style Selector="Border.details-panel">
       <Setter Property="Background" Value="{DynamicResource SurfaceBackground}" />
       <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushAccentRed}" />
+      <Setter Property="RenderTransformOrigin" Value="100%,50%" />
+      <Setter Property="RenderTransform" Value="translateX(22px) scaleX(0.96)" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Border.details-panel.details-panel-open">
+      <Setter Property="RenderTransform" Value="translateX(0px) scaleX(1)" />
     </Style>
 
     <Style Selector="Border.shell-frame">
@@ -286,6 +297,23 @@
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
+    <Style Selector="TextBlock.split-button-arrow-glyph">
+      <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+      <Setter Property="RenderTransform" Value="rotate(0deg)" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button.split-button-arrow.open">
+      <Setter Property="Background" Value="#25303E" />
+    </Style>
+
+    <Style Selector="TextBlock.split-button-arrow-glyph.open">
+      <Setter Property="RenderTransform" Value="rotate(180deg)" />
+    </Style>
     <Style Selector="Button.split-button-main:pointerover">
       <Setter Property="Background" Value="#25303E" />
     </Style>
@@ -303,29 +331,30 @@
     </Style>
 
     <Style Selector="Border.launch-flyout-panel">
-      <Setter Property="Padding" Value="10" />
-      <Setter Property="CornerRadius" Value="10" />
-      <Setter Property="Background" Value="#1A2029" />
-      <Setter Property="BorderBrush" Value="#2F3948" />
+      <Setter Property="Padding" Value="12" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="#1B2430" />
+      <Setter Property="BorderBrush" Value="#4A6280" />
       <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BoxShadow" Value="0 16 32 0 #70000000" />
     </Style>
 
     <Style Selector="Button.launch-flyout-button">
-      <Setter Property="MinHeight" Value="38" />
+      <Setter Property="MinHeight" Value="40" />
       <Setter Property="Padding" Value="12,8" />
       <Setter Property="CornerRadius" Value="10" />
       <Setter Property="FontSize" Value="14" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="Background" Value="#253140" />
-      <Setter Property="BorderBrush" Value="#34445A" />
+      <Setter Property="Background" Value="#263549" />
+      <Setter Property="BorderBrush" Value="#3F5774" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Foreground" Value="#EAF1FF" />
     </Style>
 
     <Style Selector="Button.launch-flyout-button:pointerover">
-      <Setter Property="Background" Value="#2D3A4D" />
-      <Setter Property="BorderBrush" Value="#446081" />
+      <Setter Property="Background" Value="#324863" />
+      <Setter Property="BorderBrush" Value="#5D7EA3" />
     </Style>
 
     <Style Selector="Button.launch-flyout-button:pressed">
