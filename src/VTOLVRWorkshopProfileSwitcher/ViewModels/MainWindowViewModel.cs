@@ -28,8 +28,8 @@ namespace VTOLVRWorkshopProfileSwitcher.ViewModels;
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
     private const string GitHubOwner = "B1progame";
-    private const string GitHubRepoName = "Vtol-Vr-Mod-Profiler";
-    private const string ReleasesPageUrl = "https://github.com/B1progame/Vtol-Vr-Mod-Profiler/releases";
+    private const string GitHubRepoName = "Vtol-Vr-Mod";
+    private const string ReleasesPageUrl = "https://github.com/B1progame/Vtol-Vr-Mod/releases";
     private const string DefaultInstallerAssetName = "VTOLVRSwitcher-Setup.exe";
     private static readonly Version CurrentAppVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
     private static readonly string CurrentVersionId = GetCurrentVersionId();
