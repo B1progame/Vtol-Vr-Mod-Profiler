@@ -215,7 +215,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public override void Dispose()
     {
-        TrySetDoorstopEnabled(false, out _, out _);
+        // Do not force-disable Doorstop on launcher exit.
+        // Users may close the launcher immediately after pressing Play; disabling
+        // here can race with VTOL startup and prevent mods from loading.
         TryRestoreDisabledModFoldersOnLauncherExit();
         _launchCts?.Cancel();
         _launchCts?.Dispose();
@@ -1374,9 +1376,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     .Where(IsNumericWorkshopId)
                     .ToHashSet(StringComparer.Ordinal);
 
-                await _logger.WarnAsync(
-                    "CWB mode active: forcing all workshop folders enabled (removing # prefixes) to avoid CWB folder-path crashes.");
-
                 changes = await _renameEngine.ApplyEnabledSetAsync(
                     ActiveWorkshopPath,
                     current,
@@ -1421,6 +1420,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 ? resolvedEnabledSet.ToHashSet(StringComparer.Ordinal)
                 : enabledAfterApply;
 
+            if (IsLaunchingGame)
+            {
+                await PrimeModManagerBeforeLoadOnStartSyncAsync();
+            }
+
             var syncResult = await _loadOnStartSyncService.SyncAsync(loadOnStartEnabledIds, cancellationToken);
             if (syncResult.Success)
             {
@@ -1434,7 +1438,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             var missingAfterApply = BuildMissingWorkshopIdList(requiredIds, enabledAfterApply);
             await SetMissingModsAsync(missingAfterApply, applyContext);
             await _logger.LogAsync(
-                $"Apply result ({applyContext}): requested={requiredIds.Count}, enabledAfterApply={enabledAfterApply.Count}, missingAfterApply={missingAfterApply.Count}");
+                $"Apply result ({applyContext}): requested={requiredIds.Count}");
 
             cancellationToken.ThrowIfCancellationRequested();
             await RefreshModsAsync();
@@ -1442,6 +1446,63 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    private async Task PrimeModManagerBeforeLoadOnStartSyncAsync()
+    {
+        var modManagerExePath = ResolveModManagerExePath();
+        if (string.IsNullOrWhiteSpace(modManagerExePath) || !File.Exists(modManagerExePath))
+        {
+            return;
+        }
+
+        Process? process = null;
+        try
+        {
+            process = Process.Start(new ProcessStartInfo
+            {
+                FileName = modManagerExePath,
+                WorkingDirectory = Path.GetDirectoryName(modManagerExePath) ?? string.Empty,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Minimized
+            });
+
+            if (process is null)
+            {
+                return;
+            }
+
+            await _logger.LogAsync($"Priming Mod Manager before Load on Start sync (PID {process.Id}).");
+            await Task.Delay(1200);
+
+            if (process.HasExited)
+            {
+                await _logger.LogAsync("Closed priming Mod Manager process.");
+                return;
+            }
+
+            if (process.CloseMainWindow())
+            {
+                process.WaitForExit(1500);
+            }
+
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(1500);
+            }
+
+            await _logger.LogAsync("Closed priming Mod Manager process.");
+        }
+        catch (Exception ex)
+        {
+            await _logger.LogAsync($"Mod Manager pre-sync prime skipped: {ex.Message}");
+        }
+        finally
+        {
+            process?.Dispose();
         }
     }
 
