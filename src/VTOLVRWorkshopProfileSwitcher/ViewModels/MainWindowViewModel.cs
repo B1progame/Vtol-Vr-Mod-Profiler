@@ -2298,13 +2298,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             return false;
         }
 
-        var trimmed = tag.Trim();
-        if (!trimmed.StartsWith("v", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var normalized = NormalizeTag(trimmed);
+        var normalized = NormalizeTag(tag);
         return Version.TryParse(normalized, out _);
     }
 
