@@ -578,8 +578,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var script =
             $"$expectedTag = '{normalizedExpected}'; " +
             "$expectedVersion = $null; " +
+            "$expectedVersionKey = $null; " +
             "if (-not [string]::IsNullOrWhiteSpace($expectedTag)) { " +
-            "  try { $expectedVersion = [version]$expectedTag } catch { $expectedVersion = $null } " +
+            "  try { " +
+            "    $expectedVersion = [version]$expectedTag; " +
+            "    $expectedVersionKey = '{0}.{1}.{2}' -f $expectedVersion.Major, $expectedVersion.Minor, $expectedVersion.Build; " +
+            "  } catch { $expectedVersion = $null; $expectedVersionKey = $null } " +
             "}; " +
             $"try {{ Wait-Process -Id {installerProcessId} -ErrorAction SilentlyContinue }} catch {{ }}; " +
             "$deadline = (Get-Date).AddMinutes(3); " +
@@ -590,7 +594,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             $"    $installedFileVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo('{escapedExePath}').FileVersion; " +
             "    if (-not [string]::IsNullOrWhiteSpace($installedFileVersion)) { " +
             "      $installedVersion = [version]$installedFileVersion; " +
-            "      if ($installedVersion -ge $expectedVersion) { break } " +
+            "      $installedVersionKey = '{0}.{1}.{2}' -f $installedVersion.Major, $installedVersion.Minor, $installedVersion.Build; " +
+            "      if ($installedVersionKey -eq $expectedVersionKey) { break } " +
             "    } " +
             "  } catch { }; " +
             "  Start-Sleep -Seconds 1; " +
@@ -1431,15 +1436,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 await _logger.LogAsync($"CWB loaditems sync skipped: {cwbSyncResult.Message}");
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
-            var applied = await _scanner.ScanAsync(ActiveWorkshopPath, cancellationToken);
-            var enabledAfterApply = applied
-                .Where(mod => mod.IsEnabled)
-                .Select(mod => mod.WorkshopId)
-                .ToHashSet(StringComparer.Ordinal);
-            var loadOnStartEnabledIds = usesCustomWeaponsBase
-                ? resolvedEnabledSet.ToHashSet(StringComparer.Ordinal)
-                : enabledAfterApply;
+            var loadOnStartEnabledIds = resolvedEnabledSet.ToHashSet(StringComparer.Ordinal);
 
             if (IsLaunchingGame)
             {
@@ -1456,13 +1453,26 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 await _logger.LogAsync($"Load On Start sync skipped: {syncResult.Message}");
             }
 
-            var missingAfterApply = BuildMissingWorkshopIdList(requiredIds, enabledAfterApply);
+            cancellationToken.ThrowIfCancellationRequested();
+            var applied = await _scanner.ScanAsync(ActiveWorkshopPath, cancellationToken);
+            var installedAfterApply = applied
+                .Select(mod => mod.WorkshopId)
+                .Where(IsNumericWorkshopId)
+                .ToHashSet(StringComparer.Ordinal);
+            var enabledAfterApply = applied
+                .Where(mod => mod.IsEnabled)
+                .Select(mod => mod.WorkshopId)
+                .Where(IsNumericWorkshopId)
+                .ToHashSet(StringComparer.Ordinal);
+
+            var missingAfterApply = BuildMissingWorkshopIdList(requiredIds, installedAfterApply);
             await SetMissingModsAsync(missingAfterApply, applyContext);
             await _logger.LogAsync(
-                $"Apply result ({applyContext}): requested={requiredIds.Count}");
+                $"Apply result ({applyContext}): requested={requiredIds.Count}, resolved={loadOnStartEnabledIds.Count}, enabledAfterApply={enabledAfterApply.Count}, missingAfterApply={missingAfterApply.Count}");
 
             cancellationToken.ThrowIfCancellationRequested();
             await RefreshModsAsync();
+            ApplyEnabledSelectionToToggles(loadOnStartEnabledIds);
         }
         finally
         {
@@ -1890,6 +1900,28 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         return requestedEnabledSet;
+    }
+
+    private void ApplyEnabledSelectionToToggles(IReadOnlySet<string> enabledWorkshopIds)
+    {
+        _isLoadingProfileSelectionIntoToggles = true;
+        try
+        {
+            foreach (var mod in _allMods)
+            {
+                var shouldBeEnabled = enabledWorkshopIds.Contains(mod.WorkshopId);
+                if (mod.IsEnabled != shouldBeEnabled)
+                {
+                    mod.IsEnabled = shouldBeEnabled;
+                }
+            }
+        }
+        finally
+        {
+            _isLoadingProfileSelectionIntoToggles = false;
+        }
+
+        NotifyModStatsChanged();
     }
 
     private static HashSet<string> BuildCwbPackFolderToggleExclusions(

@@ -14,6 +14,35 @@ public sealed class LoadOnStartSyncService
     private const string TargetAppId = "3018410";
     private const string LoadOnStartFileName = "Load on Start";
 
+    public async Task<IReadOnlySet<string>?> TryReadEnabledWorkshopIdsAsync(CancellationToken cancellationToken = default)
+    {
+        var candidateFiles = FindCandidateFiles();
+        if (candidateFiles.Count == 0)
+        {
+            return null;
+        }
+
+        foreach (var filePath in candidateFiles)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var existing = await ReadExistingAsync(filePath, cancellationToken);
+                return existing.WorkshopItems
+                    .Where(pair => pair.Value && IsNumericId(pair.Key))
+                    .Select(pair => pair.Key)
+                    .ToHashSet(StringComparer.Ordinal);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+                // Try the next candidate file if one Steam user file is transiently unavailable.
+            }
+        }
+
+        return null;
+    }
+
     public async Task<LoadOnStartSyncResult> SyncAsync(
         IReadOnlyCollection<string> enabledWorkshopIds,
         CancellationToken cancellationToken = default)

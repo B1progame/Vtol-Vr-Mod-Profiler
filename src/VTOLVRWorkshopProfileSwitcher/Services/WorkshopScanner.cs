@@ -18,6 +18,7 @@ public sealed class WorkshopScanner
     private const string SteamWorkshopApi = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/";
     private static readonly HttpClient HttpClient = new();
     private static readonly CwbLoadItemsService CwbLoadItemsService = new();
+    private static readonly LoadOnStartSyncService LoadOnStartSyncService = new();
     private static readonly string ThumbnailCacheDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "VTOLVRWorkshopProfileSwitcher",
@@ -70,6 +71,15 @@ public sealed class WorkshopScanner
 
         try
         {
+            await ApplyLoadOnStartStatesAsync(result, cancellationToken);
+        }
+        catch
+        {
+            // Never fail full mod scanning due to optional Steam state projection.
+        }
+
+        try
+        {
             await ApplyCwbPackStatesAsync(workshopPath, result, cancellationToken);
         }
         catch
@@ -80,6 +90,27 @@ public sealed class WorkshopScanner
         await EnrichMissingMetadataFromSteamAsync(result, cancellationToken);
 
         return result.OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static async Task ApplyLoadOnStartStatesAsync(
+        List<WorkshopMod> mods,
+        CancellationToken cancellationToken)
+    {
+        if (mods.Count == 0)
+        {
+            return;
+        }
+
+        var enabledWorkshopIds = await LoadOnStartSyncService.TryReadEnabledWorkshopIdsAsync(cancellationToken);
+        if (enabledWorkshopIds is null)
+        {
+            return;
+        }
+
+        foreach (var mod in mods)
+        {
+            mod.IsEnabled = mod.IsEnabled && enabledWorkshopIds.Contains(mod.WorkshopId);
+        }
     }
 
     private static async Task ApplyCwbPackStatesAsync(
